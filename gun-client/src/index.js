@@ -3,11 +3,26 @@ import ReactDOM from 'react-dom/client';
 import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
+import { DialogProvider } from './contexts/DialogContext';
+import { ScanlinesProvider } from './contexts/ScanlinesContext';
+import { SettingsProvider } from './contexts/SettingsContext';
+import { AvatarProvider } from './contexts/AvatarContext';
+import { WallpaperProvider } from './contexts/WallpaperContext';
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   <React.StrictMode>
-    <App />
+    <SettingsProvider>
+      <DialogProvider>
+        <ScanlinesProvider>
+          <AvatarProvider>
+            <WallpaperProvider>
+              <App />
+            </WallpaperProvider>
+          </AvatarProvider>
+        </ScanlinesProvider>
+      </DialogProvider>
+    </SettingsProvider>
   </React.StrictMode>
 );
 

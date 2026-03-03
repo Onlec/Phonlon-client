@@ -5,14 +5,12 @@
  * Orchestreert alle hooks en rendert de desktop omgeving.
  */
 
-import React, { useState, useEffect, useRef } from 'react';
-import Pane from './components/Pane';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import LoginScreen from './components/screens/LoginScreen';
-import ConversationPane from './components/panes/ConversationPane';
 import BootSequence from './components/screens/BootSequence';
-import ToastNotification from './components/ToastNotification';
-import ControlPane from './components/ControlPane';
-import { gun, user } from './gun';
+import PostLoginWelcomeScreen from './components/screens/PostLoginWelcomeScreen';
+import DesktopShell from './components/shell/DesktopShell';
+import { user } from './gun';
 import { paneConfig } from './paneConfig';
 import './App.css';
 import { log } from './utils/debug';
@@ -25,11 +23,15 @@ import { usePresence } from './hooks/usePresence';
 import { usePaneManager } from './hooks/usePaneManager';
 import { useMessageListeners } from './hooks/useMessageListeners';
 import { useActiveTabSessionGuard } from './hooks/useActiveTabSessionGuard';
+import { useMessengerCoordinator } from './hooks/useMessengerCoordinator';
+import { useSystrayManager } from './hooks/useSystrayManager';
+import { useDesktopManager } from './hooks/useDesktopManager';
+import { useDesktopCommandBus } from './hooks/useDesktopCommandBus';
+import { useContextMenuManager } from './hooks/useContextMenuManager';
+import { usePresenceCoordinator } from './hooks/usePresenceCoordinator';
 
 import { runFullCleanup } from './utils/gunCleanup';
-import { STATUS_OPTIONS, getPresenceStatus } from './utils/presenceUtils';
 import { clearEncryptionCache } from './utils/encryption';
-import { canAttachPresenceListeners } from './utils/contactModel';
 import {
   POST_LOGIN_CLEANUP_DELAY_MS,
   SESSION_RELOAD_DELAY_MS,
@@ -50,6 +52,10 @@ import { useScanlinesPreference } from './contexts/ScanlinesContext';
 import { useSettings } from './contexts/SettingsContext';
 import { useAvatar } from './contexts/AvatarContext';
 import { useWallpaper } from './contexts/WallpaperContext';
+import { FEATURE_FLAGS } from './config/featureFlags';
+import xpAssets from './config/xpAssets';
+import { removeScoped } from './utils/storageScope';
+import { readUserPrefOnce, PREF_KEYS } from './utils/userPrefsGun';
 
 
 // Helper: lees lokale naam uit chatlon_users localStorage
@@ -71,15 +77,14 @@ function getOrCreateTabClientId() {
   return id;
 }
 
-function isRememberMeEnabled() {
-  return localStorage.getItem('chatlon_remember_me') === 'true';
-}
-
 function App() {
+  const WELCOME_HOLD_MS = 1200;
+  const WELCOME_FADE_MS = 800;
+
   // ============================================
   // AUTH STATE
   // ============================================
-  const { scanlinesEnabled } = useScanlinesPreference();
+  const { scanlinesEnabled, setStorageUserKey: setScanlinesStorageUserKey } = useScanlinesPreference();
   const [hasBooted, setHasBooted] = useState(() => {
     // Boot alleen bij eerste bezoek of na expliciete restart
     const skipBoot = sessionStorage.getItem('chatlon_boot_complete');
@@ -90,6 +95,8 @@ function App() {
   const [isLoggingOff, setIsLoggingOff] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [currentUser, setCurrentUser] = useState('');
+  const [showPostLoginWelcome, setShowPostLoginWelcome] = useState(false);
+  const [welcomeFadeOut, setWelcomeFadeOut] = useState(false);
   const [sessionNotice, setSessionNotice] = useState(() => loadSessionNotice());
   const [unreadChats, setUnreadChats] = React.useState(new Set());
   const [nowPlaying, setNowPlaying] = useState(null);
@@ -97,23 +104,23 @@ function App() {
   const messengerSignedInRef = useRef(false); // ref voor gebruik in callbacks
   messengerSignedInRef.current = messengerSignedIn; // altijd in sync
 
-  const [showSystrayMenu, setShowSystrayMenu] = useState(false);
-  const systrayMenuRef = useRef(null);
-  const systrayIconRef = useRef(null);
   const tabClientIdRef = useRef(getOrCreateTabClientId());
   const cleanupTimeoutRef = useRef(null);
+  const welcomeTimerRef = useRef(null);
+  const welcomeFadeTimerRef = useRef(null);
   const conflictHandlerRef = useRef(null);
   const sessionGenerationRef = useRef(0);
+  const rememberMeEnabledRef = useRef(false);
   const authStateRef = useRef({ isLoggedIn: false, currentUser: '' });
   authStateRef.current = { isLoggedIn, currentUser };
 
-  // FIX: Track of we al geÃ¯nitialiseerd zijn om dubbele openPane te voorkomen
+  // FIX: Track of we al geinitialiseerd zijn om dubbele openPane te voorkomen
   const hasInitializedRef = useRef(false);
 
   // ============================================
   // HOOKS
   // ============================================
-  const { settings } = useSettings();
+  const { settings, setStorageUserKey: setSettingsStorageUserKey } = useSettings();
   const { getAvatar, getDisplayName } = useAvatar();
   // Refs zodat Gun-callbacks altijd de meest actuele versie hebben
   const getDisplayNameRef = useRef(getDisplayName);
@@ -122,7 +129,7 @@ function App() {
   const { playSound, playSoundAsync } = useSounds();
   
   // Toast notifications
-  const { 
+  const {
     toasts, 
     showToast, 
     removeToast, 
@@ -148,6 +155,7 @@ function App() {
     openConversation,
     closeConversation,
     closeAllConversations,
+    closeAllGames,
     minimizeConversation,
     toggleMaximizeConversation,
     getZIndex,
@@ -160,8 +168,22 @@ function App() {
     resetAll,
     setNotificationTime,
     unreadMetadata,
-    clearNotificationTime
+    clearNotificationTime,
+    games,
+    openGamePane,
+    closeGamePane,
+    minimizeGamePane,
+    toggleMaximizeGamePane
   } = usePaneManager();
+
+  const desktopCommandBus = useDesktopCommandBus({
+    openPane,
+    openConversation,
+    focusPane,
+    minimizePane,
+    closePane,
+    toggleStartMenu
+  });
 
   // Presence management
   const {
@@ -172,56 +194,70 @@ function App() {
 
   
 
-  // Message listeners
-// ============================================
-  // MESSAGE HANDLER (voor Toasts)
-  // ============================================
-  
-const handleIncomingMessage = React.useCallback((msg, senderName, msgId, sessionId) => {
-  const isSelf = msg.sender === currentUser;
-  if (isSelf) return;
-
-  const chatPaneId = `conv_${senderName}`;
-  const isFocused = activePaneRef.current === chatPaneId;
-  const conv = conversationsRef.current[chatPaneId];
-  const isOpen = conv && conv.isOpen && !conv.isMinimized;
-
-  // STAP A: Ongelezen status + systray bolletje â€” alleen als Messenger actief is
-  if (messengerSignedInRef.current && (!isFocused || !isOpen)) {
-    setUnreadChats(prev => new Set(prev).add(chatPaneId));
-  }
-
-  // STAP B: Toast en geluid alleen als Chatlon Messenger actief is
-  if (!isFocused && messengerSignedInRef.current) {
-    const isNudge = msg.type === 'nudge';
-    // Geluid: nudge heeft eigen geluid via ConversationPane, geen berichtgeluid
-    if (!isNudge) playSound('message');
-    // Toast: nudge krijgt eigen toast via handleNudge, geen berichtentoast
-    if (!isNudge && settings.toastNotifications) {
-      const toastKey = `msg_${msgId}`;
-      shownToastsRef.current.add(toastKey);
-      showToast({
-        type: 'message',
-        contactName: senderName,
-        from: getDisplayNameRef.current(senderName),
-        message: msg.content,
-        avatar: getAvatar(senderName),
-        messageId: msgId,
-        sessionId: sessionId
+const onTaskbarClick = React.useCallback((paneId) => {
+  if (paneId.startsWith('conv_')) {
+      const contactName = paneId.replace('conv_', '');
+      desktopCommandBus.openConversation(contactName);
+      setUnreadChats(prev => {
+        const next = new Set(prev);
+        next.delete(paneId);
+        return next;
       });
+    } else if (paneId.startsWith('game_')) {
+      const game = games[paneId];
+      if (game) openGamePane(game.contactName, game.gameSessionId, game.gameType);
+    } else {
+      handleTaskbarClick(paneId);
     }
-    if (isNudge) handleNudgeRef.current(senderName);
-  }
-}, [currentUser, showToast, setUnreadChats, activePaneRef, conversationsRef, shownToastsRef, playSound, settings, getAvatar]);
+  }, [desktopCommandBus, handleTaskbarClick, games, openGamePane]);
+
+  const messengerCoordinator = useMessengerCoordinator({
+    currentUser,
+    messengerSignedInRef,
+    settings,
+    activePaneRef,
+    conversationsRef,
+    setUnreadChats,
+    showToast,
+    getAvatar,
+    getDisplayNameRef,
+    playSound,
+    openPane: desktopCommandBus.openPane,
+    onTaskbarClick
+  });
+
+  const priorityPresenceContacts = useMemo(() => {
+    const priority = new Set();
+    if (typeof activePane === 'string' && activePane.startsWith('conv_')) {
+      priority.add(activePane.replace('conv_', ''));
+    }
+    Object.entries(conversations || {}).forEach(([paneId, conv]) => {
+      if (!paneId.startsWith('conv_')) return;
+      if (!conv || !conv.isOpen || conv.isMinimized) return;
+      priority.add(paneId.replace('conv_', ''));
+    });
+    return Array.from(priority);
+  }, [activePane, conversations]);
+
+  // Messenger active boundary: contact presence and chat listeners are only active
+  // while Chatlon Messenger itself is signed in.
+  const { contactPresence: sharedContactPresence, resetPresenceState } = usePresenceCoordinator({
+    isLoggedIn,
+    currentUser,
+    onContactOnline: messengerCoordinator.handleContactOnline,
+    priorityContacts: priorityPresenceContacts,
+    isMessengerActive: messengerSignedIn
+  });
   // Message listeners initialisatie
   const { 
     cleanup: cleanupListeners 
   } = useMessageListeners({
     isLoggedIn,
     currentUser,
+    messengerSignedIn,
     conversationsRef,
     activePaneRef,
-    onMessage: handleIncomingMessage,
+    onMessage: messengerCoordinator.handleIncomingMessage,
     onNotification: (contactName, timeRef) => {
       setNotificationTime(contactName, timeRef);
     },
@@ -314,19 +350,32 @@ const handleIncomingMessage = React.useCallback((msg, senderName, msgId, session
     }
   };
 
+  const clearWelcomeTimers = () => {
+    if (welcomeTimerRef.current) {
+      clearTimeout(welcomeTimerRef.current);
+      welcomeTimerRef.current = null;
+    }
+    if (welcomeFadeTimerRef.current) {
+      clearTimeout(welcomeFadeTimerRef.current);
+      welcomeFadeTimerRef.current = null;
+    }
+  };
+
   const dismissSessionNotice = React.useCallback(() => {
     clearSessionNotice();
     setSessionNotice(null);
   }, []);
 
-  const resetPresenceMonitorState = () => {
-    presencePrevRef.current = {};
-    presenceListenersRef.current.forEach(node => { if (node.off) node.off(); });
-    presenceListenersRef.current = new Map();
-  };
-
   const runSessionTeardown = () => {
-    cleanupPresence();
+    clearWelcomeTimers();
+    setShowPostLoginWelcome(false);
+    setWelcomeFadeOut(false);
+
+    try {
+      cleanupPresence();
+    } catch (err) {
+      log('[App] cleanupPresence failed:', err);
+    }
     cleanupListeners();
     resetShownToasts();
     resetAll();
@@ -334,10 +383,11 @@ const handleIncomingMessage = React.useCallback((msg, senderName, msgId, session
 
     hasInitializedRef.current = false;
     setMessengerSignedIn(false);
-    resetPresenceMonitorState();
+    resetPresenceState();
     clearPendingCleanupTimeout();
 
-    if (!isRememberMeEnabled()) {
+    if (!rememberMeEnabledRef.current) {
+      removeScoped('credentials', currentUser);
       localStorage.removeItem('chatlon_credentials');
     }
 
@@ -391,8 +441,11 @@ const handleIncomingMessage = React.useCallback((msg, senderName, msgId, session
     }
 
     if (playLogoffSound) {
-      await playSoundAsync('logoff');
-      finishClose();
+      try {
+        await playSoundAsync('logoff');
+      } finally {
+        finishClose();
+      }
       return true;
     }
 
@@ -403,6 +456,8 @@ const handleIncomingMessage = React.useCallback((msg, senderName, msgId, session
   };
 
   conflictHandlerRef.current = () => {
+    const authState = authStateRef.current;
+    if (!authState.isLoggedIn || !authState.currentUser) return;
     void closeSession({
       reason: SESSION_CLOSE_REASON_CONFLICT,
       showLogoffScreen: true,
@@ -421,8 +476,20 @@ const handleIncomingMessage = React.useCallback((msg, senderName, msgId, session
     dismissSessionNotice();
     setIsLoggedIn(true);
     setCurrentUser(username);
+    setShowPostLoginWelcome(true);
+    setWelcomeFadeOut(false);
 
-    playSound('login');
+    clearWelcomeTimers();
+    welcomeTimerRef.current = setTimeout(() => {
+      playSound('login');
+      setWelcomeFadeOut(true);
+      welcomeFadeTimerRef.current = setTimeout(() => {
+        setShowPostLoginWelcome(false);
+        setWelcomeFadeOut(false);
+        welcomeFadeTimerRef.current = null;
+      }, WELCOME_FADE_MS);
+      welcomeTimerRef.current = null;
+    }, WELCOME_HOLD_MS);
 
     clearPendingCleanupTimeout();
     cleanupTimeoutRef.current = setTimeout(() => {
@@ -442,7 +509,7 @@ const handleIncomingMessage = React.useCallback((msg, senderName, msgId, session
   };
 
   
-  const handleLogoff = async () => {
+  async function handleLogoff() {
     log('[App] Logging off...');
     await closeSession({
       reason: SESSION_CLOSE_REASON_MANUAL_LOGOFF,
@@ -450,9 +517,9 @@ const handleIncomingMessage = React.useCallback((msg, senderName, msgId, session
       playLogoffSound: true,
       postClose: SESSION_POST_CLOSE_STAY_ON_LOGIN
     });
-  };
+  }
   // Trigger shutdown vanuit ingelogde sessie via dezelfde teardown pipeline.
-  const handleShutdown = async () => {
+  async function handleShutdown() {
     log('[App] Shutting down...');
     await closeSession({
       reason: SESSION_CLOSE_REASON_MANUAL_SHUTDOWN,
@@ -460,209 +527,392 @@ const handleIncomingMessage = React.useCallback((msg, senderName, msgId, session
       playLogoffSound: true,
       postClose: SESSION_POST_CLOSE_SHUTDOWN_BOOT_RELOAD
     });
-  };
+  }
 
   useEffect(() => {
     return () => {
       clearPendingCleanupTimeout();
+      clearWelcomeTimers();
     };
   }, []);
 
-  // Systray menu click-outside
   useEffect(() => {
-    if (!showSystrayMenu) return;
-    const handleClick = (e) => {
-      if (systrayMenuRef.current && !systrayMenuRef.current.contains(e.target) &&
-          systrayIconRef.current && !systrayIconRef.current.contains(e.target)) {
-        setShowSystrayMenu(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, [showSystrayMenu]);
+    const scopedUserKey = isLoggedIn && currentUser ? currentUser : 'guest';
+    setSettingsStorageUserKey(scopedUserKey);
+    setScanlinesStorageUserKey(scopedUserKey);
+  }, [isLoggedIn, currentUser, setSettingsStorageUserKey, setScanlinesStorageUserKey]);
 
-  const currentStatusOption = STATUS_OPTIONS.find(s => s.value === userStatus) || STATUS_OPTIONS[0];
-
-  // Gedeelde presence state â€” gevuld door ContactsPane, gelezen door ConversationPane
-  const [sharedContactPresence, setSharedContactPresence] = React.useState({});
-
-  const handlePresenceChange = React.useCallback((username, presenceData) => {
-    setSharedContactPresence(prev => ({ ...prev, [username]: presenceData }));
-  }, []);
-
-  const handleContactOnline = React.useCallback((contactUsername) => {
-    if (!messengerSignedInRef.current) return;
-    if (!settings.toastNotifications) return;
-    showToast({
-      type: 'presence',
-      contactName: contactUsername,
-      from: getDisplayNameRef.current(contactUsername),
-      message: 'is nu online',
-      avatar: getAvatar(contactUsername),
-    });
-  }, [showToast, getAvatar, settings.toastNotifications]);
-
-  const handleNudge = React.useCallback((contactUsername) => {
-    if (!messengerSignedInRef.current) return;
-    // Taakbalk + gesprek openen wordt al gedaan via handleIncomingMessage (useMessageListeners).
-    // handleNudge hoeft alleen de toast te tonen.
-    const chatPaneId = `conv_${contactUsername}`;
-    const isFocused = activePaneRef.current === chatPaneId;
-    if (!isFocused && settings.toastNotifications) {
-      showToast({
-        type: 'nudge',
-        contactName: contactUsername,
-        from: getDisplayNameRef.current(contactUsername),
-        message: 'heeft je een nudge gestuurd!',
-        avatar: getAvatar(contactUsername),
-      });
+  useEffect(() => {
+    let cancelled = false;
+    if (!isLoggedIn || !currentUser) {
+      rememberMeEnabledRef.current = false;
+      return () => {
+        cancelled = true;
+      };
     }
-  }, [showToast, getAvatar, settings.toastNotifications, activePaneRef]);
-
-  const handleNudgeRef = React.useRef(handleNudge);
-  handleNudgeRef.current = handleNudge;
-
-  // Ref zodat de Gun-listener altijd de actuele callback heeft
-  const handleContactOnlineRef = React.useRef(handleContactOnline);
-  handleContactOnlineRef.current = handleContactOnline;
-
-  // Persistent refs voor PresenceMonitor â€” overleven React StrictMode double-mount cleanup.
-  // Als ze lokaal in het effect staan worden ze gereset bij de tweede mount,
-  // waardoor beginstand opnieuw opgeslagen wordt en de offlineâ†’online transitie gemist wordt.
-  const presencePrevRef = React.useRef({});        // { username: { lastSeen, statusValue } }
-  const presenceListenersRef = React.useRef(new Map()); // username -> gun node
-
-  // Presence monitoring â€” altijd actief, ongeacht of ContactsPane open is
-  React.useEffect(() => {
-    if (!isLoggedIn || !currentUser) return;
-
-    log('[PresenceMonitor] Start voor:', currentUser);
-    // Gebruik REFS voor prevPresence en contactListeners zodat ze React StrictMode
-    // double-mount overleven. Als ze lokaal in het effect staan, worden ze gereset
-    // bij de tweede mount â€” dan slaat de eerste Gun callback de beginstand opnieuw
-    // op en wordt de offlineâ†’online transitie nooit gezien.
-    const prevPresence = presencePrevRef.current;
-    const contactListeners = presenceListenersRef.current;
-
-    const detachPresenceListener = (username) => {
-      const existing = contactListeners.get(username);
-      if (!existing) return;
-      if (existing.off) existing.off();
-      contactListeners.delete(username);
-      delete prevPresence[username];
-      log('[PresenceMonitor] Listener verwijderd voor contact:', username);
-    };
-
-    const contactsMapNode = user.get('contacts').map();
-    contactsMapNode.on((contactData, key) => {
-      const usernameFromData = typeof contactData?.username === 'string' ? contactData.username : '';
-      const fallbackUsername = typeof key === 'string' ? key : '';
-      const username = usernameFromData || fallbackUsername;
-      const isEligible = Boolean(contactData && username && canAttachPresenceListeners(contactData));
-
-      if (!isEligible) {
-        if (username) detachPresenceListener(username);
-        return;
+    (async () => {
+      try {
+        const enabled = await readUserPrefOnce(currentUser, PREF_KEYS.REMEMBER_ME, false);
+        if (!cancelled) {
+          rememberMeEnabledRef.current = Boolean(enabled);
+        }
+      } catch {
+        if (!cancelled) {
+          rememberMeEnabledRef.current = false;
+        }
       }
-
-      if (contactListeners.has(username)) return;
-
-      log('[PresenceMonitor] Listener op voor contact:', username);
-      const node = gun.get('PRESENCE').get(username);
-      node.on((presenceData) => {
-        // Eerste call: sla beginstand op als primitieven, geen toast.
-        // â€˜username in prevPresenceâ€™ is false bij de echte allereerste call.
-        // Na StrictMode cleanup+remount is de data al in prevPresence (via ref) â€”
-        // dan slaan we de beginstand NIET opnieuw op en blijft de transitie zichtbaar.
-        if (!(username in prevPresence)) {
-          if (presenceData) {
-            prevPresence[username] = {
-              lastSeen: presenceData.lastSeen || 0,
-              statusValue: getPresenceStatus(presenceData).value
-            };
-          } else {
-            prevPresence[username] = null;
-          }
-          return;
-        }
-        if (!presenceData) return;
-
-        const newStatus = getPresenceStatus(presenceData);
-        const prevStatusValue = prevPresence[username]?.statusValue ?? 'offline';
-
-        if (prevStatusValue === newStatus.value) {
-          return;
-        }
-
-        log('[PresenceMonitor]', username, '| prev:', prevStatusValue, '-> new:', newStatus.value);
-
-        if (prevStatusValue === 'offline' && newStatus.value !== 'offline') {
-          log('[PresenceMonitor] ONLINE TRANSITIE voor:', username);
-          handleContactOnlineRef.current(username);
-        }
-
-        // Sla nieuwe state op als primitieven (nooit als object-referentie)
-        prevPresence[username] = {
-          lastSeen: presenceData.lastSeen || 0,
-          statusValue: newStatus.value
-        };
-      });
-      contactListeners.set(username, node);
-    });
+    })();
     return () => {
-      contactsMapNode.off();
+      cancelled = true;
     };
-
   }, [isLoggedIn, currentUser]);
 
-
-  const handleToastClick = (toast) => {
-  if (toast.type === 'message') {
-    const paneId = `conv_${toast.contactName}`;
-    onTaskbarClick(paneId);
-  } else if (toast.type === 'presence') {
-    const paneId = `conv_${toast.contactName}`;
-    onTaskbarClick(paneId);
-  } else if (toast.type === 'friendRequest') {
-    openPane('contacts');
-  }
-};
-
-const onTaskbarClick = React.useCallback((paneId) => {
-  log('[App] Taakbalk klik op:', paneId);
-
-  // 1. Als het een chat is, zorg dat hij ECHT open gaat
-  if (paneId.startsWith('conv_')) {
-    const contactName = paneId.replace('conv_', '');
-    
-    // Forceer openen in PaneManager
-    openConversation(contactName); 
-    
-    // Haal uit ongelezen lijst
-    setUnreadChats(prev => {
-      const next = new Set(prev);
-      next.delete(paneId);
-      return next;
+  // Hard guarantee: when messenger signs out/closes, all open conversations close.
+  useEffect(() => {
+    if (messengerSignedIn) return;
+    closeAllConversations();
+    closeAllGames();
+    setUnreadChats((prev) => {
+      if (!prev || prev.size === 0) return prev;
+      const next = new Set([...prev].filter((id) => !String(id).startsWith('conv_')));
+      return next.size === prev.size ? prev : next;
     });
-  } else {
-    // Normale panes
-    handleTaskbarClick(paneId);
-  }
-}, [handleTaskbarClick, openConversation]);
+  }, [messengerSignedIn, closeAllConversations, closeAllGames]);
+
+  const desktopManager = useDesktopManager({
+    paneConfig,
+    onOpenPane: desktopCommandBus.openPane,
+    currentUser
+  });
+
+  const contextMenuManager = useContextMenuManager({
+    enabled: FEATURE_FLAGS.contextMenus,
+    onMenuOpen: () => {
+      closeStartMenu();
+    }
+  });
+
+  const systrayManager = useSystrayManager({
+    userStatus,
+    onStatusChange: handleStatusChange,
+    onOpenContacts: () => {
+      desktopCommandBus.openContacts();
+    },
+    onSignOut: () => {
+      closeAllConversations();
+      closeAllGames();
+      setMessengerSignedIn(false);
+    },
+    onCloseMessenger: () => {
+      closeAllConversations();
+      closeAllGames();
+      setMessengerSignedIn(false);
+      desktopCommandBus.closePane('contacts');
+    },
+    onOpenMenu: () => {
+      closeStartMenu();
+      contextMenuManager.closeMenu();
+    }
+  });
+
+  const buildDesktopActions = React.useCallback(() => ([
+    {
+      id: 'refresh',
+      label: 'Vernieuwen',
+      onClick: () => {}
+    },
+    {
+      id: 'align-grid',
+      label: 'Pictogrammen uitlijnen op raster',
+      onClick: () => desktopManager.alignShortcutsToGrid()
+    },
+    { type: 'separator' },
+    {
+      id: 'properties',
+      label: 'Eigenschappen',
+      onClick: () => desktopCommandBus.openPane('control')
+    }
+  ]), [desktopCommandBus, desktopManager]);
+
+  const buildShortcutActions = React.useCallback((shortcutId, beginRename) => ([
+    {
+      id: 'open',
+      label: 'Openen',
+      bold: true,
+      onClick: () => desktopManager.openShortcut(shortcutId)
+    },
+    { type: 'separator' },
+    {
+      id: 'rename',
+      label: 'Naam wijzigen',
+      onClick: () => {
+        if (typeof beginRename === 'function') beginRename();
+      }
+    },
+    {
+      id: 'delete',
+      label: 'Verwijderen',
+      onClick: () => desktopManager.removeShortcut(shortcutId)
+    },
+    { type: 'separator' },
+    {
+      id: 'properties',
+      label: 'Eigenschappen',
+      onClick: () => {}
+    }
+  ]), [desktopManager]);
+
+  const buildTabActions = React.useCallback((paneId) => {
+    const pane = panes[paneId];
+    const conv = conversations[paneId];
+    const game = games?.[paneId];
+    const isConversation = paneId.startsWith('conv_');
+    const isGame = paneId.startsWith('game_');
+    const isMinimized = isConversation
+      ? Boolean(conv?.isMinimized)
+      : isGame
+        ? Boolean(game?.isMinimized)
+        : Boolean(pane?.isMinimized);
+    const isMaximized = isConversation
+      ? Boolean(conv?.isMaximized)
+      : isGame
+        ? Boolean(game?.isMaximized)
+        : Boolean(pane?.isMaximized);
+
+    return [
+      {
+        id: 'restore',
+        label: 'Herstellen',
+        disabled: !isMinimized,
+        onClick: () => onTaskbarClick(paneId)
+      },
+      {
+        id: 'minimize',
+        label: 'Minimaliseren',
+        disabled: isMinimized,
+        onClick: () => {
+          if (isConversation) {
+            minimizeConversation(paneId);
+            return;
+          }
+          if (isGame) {
+            minimizeGamePane(paneId);
+            return;
+          }
+          minimizePane(paneId);
+        }
+      },
+      {
+        id: 'maximize',
+        label: 'Maximaliseren',
+        disabled: false,
+        onClick: () => {
+          if (isConversation) {
+            if (isMinimized) onTaskbarClick(paneId);
+            toggleMaximizeConversation(paneId);
+            return;
+          }
+          if (isGame) {
+            if (isMinimized) onTaskbarClick(paneId);
+            toggleMaximizeGamePane(paneId);
+            return;
+          }
+          if (isMinimized) onTaskbarClick(paneId);
+          if (!isMaximized || isMinimized) {
+            toggleMaximizePane(paneId);
+          }
+        }
+      },
+      { type: 'separator' },
+      {
+        id: 'close',
+        label: 'Sluiten',
+        onClick: () => {
+          if (isConversation) {
+            closeConversation(paneId);
+            return;
+          }
+          if (isGame) {
+            closeGamePane(paneId);
+            return;
+          }
+          closePane(paneId);
+        }
+      }
+    ];
+  }, [
+    panes,
+    conversations,
+    games,
+    onTaskbarClick,
+    minimizeConversation,
+    minimizeGamePane,
+    minimizePane,
+    toggleMaximizeConversation,
+    toggleMaximizeGamePane,
+    toggleMaximizePane,
+    closeConversation,
+    closeGamePane,
+    closePane
+  ]);
+
+  const handleShortcutContextMenu = React.useCallback((event, shortcutId, beginRename) => {
+    contextMenuManager.openMenu({
+      x: event.clientX,
+      y: event.clientY,
+      type: 'shortcut',
+      target: shortcutId,
+      actions: buildShortcutActions(shortcutId, beginRename)
+    });
+  }, [contextMenuManager, buildShortcutActions]);
+
+  const handleTabContextMenu = React.useCallback((event, paneId) => {
+    contextMenuManager.openMenu({
+      x: event.clientX,
+      y: event.clientY,
+      type: 'taskbar-tab',
+      target: paneId,
+      actions: buildTabActions(paneId)
+    });
+  }, [contextMenuManager, buildTabActions]);
+
+  const minimizeAllWindows = React.useCallback(() => {
+    Object.entries(panes || {}).forEach(([paneId, pane]) => {
+      if (pane?.isOpen && !pane?.isMinimized) {
+        minimizePane(paneId);
+      }
+    });
+    Object.entries(conversations || {}).forEach(([convId, conv]) => {
+      if (conv?.isOpen && !conv?.isMinimized) {
+        minimizeConversation(convId);
+      }
+    });
+    Object.entries(games || {}).forEach(([gameId, game]) => {
+      if (game?.isOpen && !game?.isMinimized) {
+        minimizeGamePane(gameId);
+      }
+    });
+  }, [panes, conversations, games, minimizePane, minimizeConversation, minimizeGamePane]);
+
+  const buildStartButtonActions = React.useCallback(() => ([
+    {
+      id: 'open-start',
+      label: 'Open Startmenu',
+      disabled: isStartOpen,
+      onClick: () => {
+        if (!isStartOpen) {
+          desktopCommandBus.toggleStart();
+        }
+      }
+    },
+    {
+      id: 'open-control',
+      label: 'Configuratiescherm',
+      onClick: () => desktopCommandBus.openPane('control')
+    },
+    {
+      id: 'show-desktop',
+      label: 'Bureaublad tonen',
+      onClick: () => minimizeAllWindows()
+    },
+    {
+      id: 'minimize-all',
+      label: 'Alle vensters minimaliseren',
+      onClick: () => minimizeAllWindows()
+    },
+    { type: 'separator' },
+    {
+      id: 'logoff',
+      label: 'Afmelden',
+      onClick: () => {
+        void handleLogoff();
+      }
+    },
+    {
+      id: 'shutdown',
+      label: 'Afsluiten',
+      onClick: () => {
+        void handleShutdown();
+      }
+    }
+  ]), [isStartOpen, desktopCommandBus, minimizeAllWindows, handleLogoff, handleShutdown]);
+
+  const buildTaskbarActions = React.useCallback(() => ([
+    { id: 'cascade', label: 'Cascaderen', disabled: true },
+    { id: 'tile', label: 'Vensters naast elkaar', disabled: true },
+    {
+      id: 'show-desktop',
+      label: 'Bureaublad tonen',
+      onClick: () => minimizeAllWindows()
+    },
+    { type: 'separator' },
+    {
+      id: 'properties',
+      label: 'Eigenschappen',
+      onClick: () => desktopCommandBus.openPane('control')
+    }
+  ]), [desktopCommandBus, minimizeAllWindows]);
+
+  const handleTaskbarContextMenu = React.useCallback((event) => {
+    contextMenuManager.openMenu({
+      x: event.clientX,
+      y: event.clientY,
+      type: 'taskbar',
+      target: null,
+      actions: buildTaskbarActions()
+    });
+  }, [contextMenuManager, buildTaskbarActions]);
+
+  const handleStartButtonContextMenu = React.useCallback((event) => {
+    contextMenuManager.openMenu({
+      x: event.clientX,
+      y: event.clientY,
+      type: 'start-button',
+      target: null,
+      actions: buildStartButtonActions()
+    });
+  }, [contextMenuManager, buildStartButtonActions]);
+
+  const handleDesktopClick = React.useCallback(() => {
+    closeStartMenu();
+    systrayManager.closeSystrayMenu();
+    contextMenuManager.closeMenu();
+  }, [closeStartMenu, systrayManager, contextMenuManager]);
+
+  const handleToggleStartMenu = React.useCallback(() => {
+    systrayManager.closeSystrayMenu();
+    contextMenuManager.closeMenu();
+    desktopCommandBus.toggleStart();
+  }, [systrayManager, contextMenuManager, desktopCommandBus]);
+
+  // Presence owner: usePresenceCoordinator.
+  // ContactsPane consumeert alleen sharedContactPresence en subscribe't niet zelf.
+
 
   // ============================================
   // RENDER: LOGOFF SCREEN
   // ============================================
   if (isLoggingOff) {
     return (
-      <div className="logoff-screen">
-        <div className="logoff-content">
-          <div className="logoff-logo">Chatlon</div>
-          <div className="logoff-message">U wordt afgemeld...</div>
-          <div className="logoff-progress">
-            <div className="logoff-progress-bar" />
+      <div className="xp-login xp-logoff-screen">
+        <div className="xp-top-bar" />
+        <div className="xp-main xp-logoff-main">
+          <div className="xp-brand-layout xp-login-brand-layout xp-logoff-brand-layout">
+            <div className="xp-brand-left">
+              <span className="xp-brand-microsoft">Macrohard</span>
+              <span className="xp-brand-windows">Panes<span className="xp-brand-xp">dX</span></span>
+            </div>
+            <div className="xp-brand-right">
+              <div className="xp-boot-logo">
+                <div className="xp-logo-stripe xp-stripe-green"></div>
+                <div className="xp-logo-stripe xp-stripe-blue"></div>
+                <div className="xp-logo-stripe xp-stripe-red"></div>
+              </div>
+            </div>
           </div>
+          <div className="xp-logoff-message-line">Aan het uitloggen...</div>
         </div>
+        <div className="xp-bottom-bar" />
       </div>
     );
   }
@@ -672,9 +922,24 @@ const onTaskbarClick = React.useCallback((paneId) => {
   // ============================================
   if (isShutdown) {
     return (
-      <div className="shutdown-screen">
-        <div className="shutdown-content">
-          <div className="shutdown-message">De computer is uitgeschakeld.</div>
+      <div className="xp-login xp-shutdown-screen">
+        <div className="xp-top-bar" />
+        <div className="xp-main xp-shutdown-main">
+          <div className="xp-brand-layout xp-login-brand-layout xp-logoff-brand-layout">
+            <div className="xp-brand-left">
+              <span className="xp-brand-microsoft">Macrohard</span>
+              <span className="xp-brand-windows">Panes<span className="xp-brand-xp">dX</span></span>
+            </div>
+            <div className="xp-brand-right">
+              <div className="xp-boot-logo">
+                <div className="xp-logo-stripe xp-stripe-green"></div>
+                <div className="xp-logo-stripe xp-stripe-blue"></div>
+                <div className="xp-logo-stripe xp-stripe-red"></div>
+              </div>
+            </div>
+          </div>
+          <div className="xp-shutdown-message-line">De computer is uitgeschakeld.</div>
+          <div className="xp-shutdown-actions">
           <button
             className="power-on-button"
             onClick={() => {
@@ -683,9 +948,13 @@ const onTaskbarClick = React.useCallback((paneId) => {
               setHasBooted(false);
             }}
           >
-            <span className="power-on-icon">â»</span>
+            <span className="power-on-icon">{'\u23FB'}</span>
           </button>
           <div className="power-on-hint">Druk op de aan/uit-knop om de computer te starten</div>
+          </div>
+        </div>
+        <div className="xp-bottom-bar">
+          <div className="xp-bottom-strip" />
         </div>
       </div>
     );
@@ -719,295 +988,119 @@ const onTaskbarClick = React.useCallback((paneId) => {
   // RENDER: DESKTOP
   // ============================================
   return (
-    <div className="desktop" onClick={closeStartMenu} style={getWallpaperStyle()} data-theme={settings.colorScheme !== 'blauw' ? settings.colorScheme : undefined} data-fontsize={settings.fontSize !== 'normaal' ? settings.fontSize : undefined}>
-      <div id="portal-root"></div>
-      <div className={`scanlines-overlay ${scanlinesEnabled ? '' : 'disabled'}`}></div>
-      {/* Desktop Icons */}
-      <div className="shortcuts-area">
-        {Object.entries(paneConfig).map(([paneName, config]) => (
-          <div key={paneName} className="shortcut" onDoubleClick={() => openPane(paneName)}>
-            {config.desktopIcon.endsWith('.ico') || config.desktopIcon.endsWith('.png') ? (
-              <img src={config.desktopIcon} alt={config.desktopLabel} className="shortcut-icon" />
-            ) : (
-              <span className="shortcut-icon" style={{ fontSize: '32px' }}>{config.desktopIcon}</span>
-            )}
-            <span className="shortcut-label">{config.desktopLabel}</span>
-          </div>
-        ))}
-      </div>
-
-      {/* Pane Layer */}
-      <div className="pane-layer">
-        {/* Normal Panes */}
-        {Object.entries(paneConfig).map(([paneName, config]) => {
-          const pane = panes[paneName];
-          if (!pane || !pane.isOpen) return null;
-
-          const Component = config.component;
-
-          return (
-            <div key={paneName} onMouseDown={() => focusPane(paneName)} style={{ display: pane.isMinimized ? 'none' : 'block', zIndex: getZIndex(paneName), position: 'absolute'}}>
-              <Pane
-                title={config.title}
-                type={paneName}
-                isMaximized={pane.isMaximized}
-                onMaximize={() => toggleMaximizePane(paneName)}
-                onClose={() => closePane(paneName)}
-                onMinimize={() => minimizePane(paneName)}
-                zIndex={getZIndex(paneName)} // EN DEZE GEEF JE DOOR
-                onFocus={() => focusPane(paneName)}
-                isActive={activePane === paneName}
-                savedSize={savedSizes[paneName]}
-                onSizeChange={(newSize) => handleSizeChange(paneName, newSize)}
-                initialPosition={pane.initialPos || getInitialPosition(paneName)}
-                onPositionChange={(newPosition) => handlePositionChange(paneName, newPosition)}
-              >
-                {paneName === 'contacts' ? (
-                  <Component
-                    onOpenConversation={openConversation}
-                    userStatus={userStatus}
-                    onStatusChange={handleStatusChange}
-                    onLogoff={handleLogoff}
-                    onSignOut={() => { closeAllConversations(); }}
-                    onClosePane={() => { closeAllConversations(); setMessengerSignedIn(false); closePane('contacts'); }}
-                    nowPlaying={nowPlaying}
-                    currentUserEmail={currentUser}
-                    messengerSignedIn={messengerSignedIn}
-                    setMessengerSignedIn={setMessengerSignedIn}
-                    onContactOnline={handleContactOnline}
-                    onPresenceChange={handlePresenceChange}
-                  />
-                ) : paneName === 'media' ? (
-                  <Component
-                    onNowPlayingChange={setNowPlaying}
-                  />
-                ) : (
-                  <Component />
-                )}
-              </Pane>
-            </div>
-          );
-        })}
-
-        {/* Conversation Panes */}
-        {Object.entries(conversations).map(([convId, conv]) => {
-          if (!conv || !conv.isOpen) return null;
-
-          return (
-            <div 
-              key={convId} 
-              onMouseDown={() => focusPane(convId)} 
-              style={{ display: conv.isMinimized ? 'none' : 'block', zIndex: getZIndex(convId), position: 'absolute'}}>
-              <Pane
-                title={`${getDisplayName(conv.contactName)} - Gesprek`}
-                type="conversation"
-                isMaximized={conv.isMaximized}
-                onMaximize={() => toggleMaximizeConversation(convId)}
-                onClose={() => closeConversation(convId)}
-                onMinimize={() => minimizeConversation(convId)}
-                zIndex={getZIndex(convId)} // EN DEZE GEEF JE DOOR
-                onFocus={() => focusPane(convId)}
-                isActive={activePane === convId}
-                savedSize={savedSizes[convId]}
-                onSizeChange={(newSize) => handleSizeChange(convId, newSize)}
-                initialPosition={getInitialPosition(convId)}
-                onPositionChange={(newPosition) => handlePositionChange(convId, newPosition)}
-              >
-                <ConversationPane contactName={conv.contactName} lastNotificationTime={unreadMetadata[conv.contactName]} clearNotificationTime={clearNotificationTime} contactPresenceData={sharedContactPresence[conv.contactName]} onNudge={handleNudge} />
-              </Pane>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Start Menu */}
-      {isStartOpen && (
-        <div className="start-menu" onClick={(e) => e.stopPropagation()}>
-          <div className="start-menu-header">
-            <img
-              src={(() => {
-                const info = getLocalUserInfo(currentUser);
-                if (info?.localAvatar) return `/avatars/${info.localAvatar}`;
-                return getAvatar(currentUser);
-              })()}
-              alt="user"
-              className="start-user-img"
-            />
-            <span className="start-user-name">{getLocalUserInfo(currentUser)?.localName || currentUser}</span>
-          </div>
-          <div className="start-menu-main">
-            <div className="start-left-col">
-              {Object.entries(paneConfig).map(([paneName, config]) => (
-                <div 
-                  key={paneName} 
-                  className="start-item" 
-                  onClick={() => {
-                    openPane(paneName);
-                    closeStartMenu();
-                  }}
-                >
-                  {config.desktopIcon.endsWith('.ico') || config.desktopIcon.endsWith('.png') ? (
-                    <img src={config.desktopIcon} alt="icon" style={{ width: '24px', height: '24px' }} />
-                  ) : (
-                    <span style={{ fontSize: '24px' }}>{config.desktopIcon}</span>
-                  )}
-                  <span>{config.desktopLabel}</span>
-                </div>
-              ))}
-            </div>
-            <div className="start-right-col">
-              <div 
-                className="start-item-gray"
-                onClick={() => {
-                  // openPane('documents'); // als je dit later implementeert
-                  closeStartMenu();
-                }}
-              >
-                My Documents
-              </div>
-              <div 
-                className="start-item-gray"
-                onClick={() => {
-                  // openPane('computer'); // als je dit later implementeert
-                  closeStartMenu();
-                }}
-              >
-                My Computer
-              </div>
-            </div>
-          </div>
-          <div className="start-menu-footer">
-            <button className="logoff-btn" onClick={handleLogoff}>Log Off</button>
-            <button className="shutdown-btn" onClick={handleShutdown}>Shut Down</button>
-          </div>
-        </div>
-      )}
-
-      {/* Taskbar */}
-      <div className="taskbar">
-        <button 
-          className={`start-btn ${isStartOpen ? 'pressed' : ''}`} 
-          onClick={(e) => { e.stopPropagation(); toggleStartMenu(); }}
-        >
-          <span className="start-icon">ðŸªŸ</span> Start
-        </button>
-        
-        <div className="taskbar-items">
-  {/* We maken een unieke lijst van alles wat open is Ã‰N alles wat ongelezen is */}
-  {Array.from(new Set([...paneOrder, ...Array.from(unreadChats)])).map((paneId) => {
-    
-  // NEW - Met title tooltips
-  if (paneId.startsWith('conv_')) {
-    const contactName = paneId.replace('conv_', '');
-    const conv = conversations[paneId];
-    const isUnread = unreadChats.has(paneId);
-    
-    if (!conv?.isOpen && !isUnread) return null;
-
-    return (
-      <div
-        key={paneId}
-        className={`taskbar-tab ${activePane === paneId ? 'active' : ''} ${isUnread ? 'unread' : ''}`}
-        onClick={() => onTaskbarClick(paneId)}
-        title={`${getDisplayName(contactName)} - Gesprek`}
-      >
-        <span className="taskbar-icon">ðŸ’¬</span>
-        <span>{getDisplayName(contactName)}</span>
-      </div>
-    );
-  }
-
-  const pane = panes[paneId];
-  if (!pane || !pane.isOpen) return null;
-  const config = paneConfig[paneId];
-  return (
-    <div 
-      key={paneId} 
-      className={`taskbar-tab ${activePane === paneId ? 'active' : ''}`} 
-      onClick={() => onTaskbarClick(paneId)}
-      title={config.title || config.label}
-    >
-      <span className="taskbar-icon">{config.icon}</span>
-      <span>{config.label}</span>
-    </div>
-  );
-  })}
-</div>
-
-        <div className="systray">
-          {isSuperpeer && <span className="superpeer-badge" title={`Superpeer actief | ${connectedSuperpeers} peer(s) verbonden`}>ðŸ“¡</span>}
-          {isLoggedIn && (
-            <span
-              className={`relay-status-badge ${relayStatus.anyOnline ? 'relay-online' : 'relay-offline'}`}
-              title={relayStatus.anyOnline
-                ? `Relay verbonden${isSuperpeer ? ' | Superpeer actief' : ''} | ${connectedSuperpeers} peer(s)`
-                : 'Relay offline â€” klik om te reconnecten'
-              }
-              onClick={() => !relayStatus.anyOnline && forceReconnect()}
-            >
-              {relayStatus.anyOnline ? 'ðŸŸ¢' : 'ðŸ”´'}
-            </span>
-          )}
-          {isLoggedIn && messengerSignedIn && (
-            <span
-              ref={systrayIconRef}
-              className="systray-chatlon-icon"
-              title={`Chatlon - ${currentStatusOption.label} (${getDisplayName(currentUser)})`}
-              onClick={(e) => { e.stopPropagation(); setShowSystrayMenu(prev => !prev); }}
-            >
-              <span className="systray-chatlon-figure">ðŸ’¬</span>
-              <span className="systray-status-dot" style={{ backgroundColor: currentStatusOption.color }}></span>
-            </span>
-          )}
-          {showSystrayMenu && (
-            <div ref={systrayMenuRef} className="systray-menu" onClick={(e) => e.stopPropagation()}>
-              <div className="systray-menu-header">
-                <img src={getAvatar(currentUser)} alt="" className="systray-menu-avatar" />
-                <div className="systray-menu-user">
-                  <div className="systray-menu-name">{getDisplayName(currentUser)}</div>
-                  <div className="systray-menu-status" style={{ color: currentStatusOption.color }}>{currentStatusOption.label}</div>
-                </div>
-              </div>
-              <div className="dropdown-separator" />
-              {STATUS_OPTIONS.map(opt => (
-                <div
-                  key={opt.value}
-                  className={`dropdown-item ${userStatus === opt.value ? 'dropdown-item-checked' : ''}`}
-                  onClick={() => { handleStatusChange(opt.value); setShowSystrayMenu(false); }}
-                >
-                  <span className="systray-status-indicator" style={{ backgroundColor: opt.color }}></span>
-                  <span className="dropdown-item-label">{opt.label}</span>
-                </div>
-              ))}
-              <div className="dropdown-separator" />
-              <div className="dropdown-item" onClick={() => { openPane('contacts'); setShowSystrayMenu(false); }}>
-                <span className="dropdown-item-label">Chatlon openen</span>
-              </div>
-              <div className="dropdown-item" onClick={() => { closeAllConversations(); setMessengerSignedIn(false); setShowSystrayMenu(false); }}>
-                <span className="dropdown-item-label">Afmelden</span>
-              </div>
-              <div className="dropdown-separator" />
-              <div className="dropdown-item" onClick={() => { closeAllConversations(); setMessengerSignedIn(false); closePane('contacts'); setShowSystrayMenu(false); }}>
-                <span className="dropdown-item-label">Afsluiten</span>
-              </div>
-            </div>
-          )}
-          {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-        </div>
-      </div>
-
-      {/* Toast Notifications */}
-      <div className="toast-container">
-        {toasts.map((toast) => (
-          <ToastNotification
-            key={toast.id}
-            toast={toast}
-            onClose={removeToast}
-            onClick={handleToastClick}
-          />
-        ))}
-      </div>
-    </div>
+    <>
+      <DesktopShell
+        onDesktopClick={handleDesktopClick}
+        wallpaperStyle={getWallpaperStyle()}
+        dataTheme={settings.colorScheme !== 'blauw' ? settings.colorScheme : undefined}
+        dataFontsize={settings.fontSize !== 'normaal' ? settings.fontSize : undefined}
+        scanlinesEnabled={scanlinesEnabled}
+        desktopShortcuts={desktopManager.shortcuts}
+        onOpenShortcut={desktopManager.openShortcut}
+        onShortcutContextMenu={handleShortcutContextMenu}
+        onRenameShortcut={desktopManager.renameShortcut}
+        onMoveShortcut={desktopManager.moveShortcut}
+        gridConfig={desktopManager.desktopGridConfig}
+        paneLayerProps={{
+          paneConfig,
+          panes,
+          conversations,
+          focusPane,
+          getZIndex,
+          toggleMaximizePane,
+          closePane,
+          minimizePane,
+          activePane,
+          savedSizes,
+          handleSizeChange,
+          getInitialPosition,
+          handlePositionChange,
+          openConversation,
+          games,
+          openGamePane,
+          closeGamePane,
+          minimizeGamePane,
+          toggleMaximizeGamePane,
+          userStatus,
+          handleStatusChange,
+          handleLogoff,
+          closeAllConversations,
+          closeAllGames,
+          setMessengerSignedIn,
+          nowPlaying,
+          currentUser,
+          messengerSignedIn,
+          messengerCoordinator,
+          setNowPlaying,
+          toggleMaximizeConversation,
+          closeConversation,
+          minimizeConversation,
+          unreadMetadata,
+          clearNotificationTime,
+          sharedContactPresence,
+          getDisplayName
+        }}
+        startMenuProps={{
+          isOpen: isStartOpen,
+          paneConfig,
+          currentUser,
+          getAvatar,
+          getLocalUserInfo,
+          assetMap: xpAssets,
+          onOpenPane: desktopCommandBus.openPane,
+          onCloseStartMenu: closeStartMenu,
+          onLogoff: handleLogoff,
+          onShutdown: handleShutdown
+        }}
+        taskbarProps={{
+          isStartOpen,
+          onToggleStartMenu: handleToggleStartMenu,
+          onStartButtonContextMenu: handleStartButtonContextMenu,
+          onTaskbarContextMenu: handleTaskbarContextMenu,
+          paneOrder,
+          unreadChats,
+          conversations,
+          games,
+          activePane,
+          onTaskbarClick,
+          onTabContextMenu: handleTabContextMenu,
+          panes,
+          paneConfig,
+          getDisplayName,
+          assetMap: xpAssets,
+          systrayProps: {
+            isSuperpeer,
+            connectedSuperpeers,
+            isLoggedIn,
+            relayStatus,
+            forceReconnect,
+            messengerSignedIn,
+            systrayIconRef: systrayManager.systrayIconRef,
+            currentStatusOption: systrayManager.currentStatusOption,
+            getDisplayName,
+            currentUser,
+            onToggleMenu: systrayManager.onToggleMenu,
+            showSystrayMenu: systrayManager.showSystrayMenu,
+            systrayMenuRef: systrayManager.systrayMenuRef,
+            getAvatar,
+            userStatus,
+            onStatusChange: systrayManager.onStatusChange,
+            onOpenContacts: systrayManager.onOpenContacts,
+            onSignOut: systrayManager.onSignOut,
+            onCloseMessenger: systrayManager.onCloseMessenger,
+            assetMap: xpAssets
+          }
+        }}
+        toasts={toasts}
+        removeToast={removeToast}
+        onToastClick={messengerCoordinator.handleToastClick}
+        contextMenu={{
+          ...contextMenuManager,
+          buildDesktopActions
+        }}
+      />
+      {showPostLoginWelcome && <PostLoginWelcomeScreen fadingOut={welcomeFadeOut} />}
+    </>
   );
 }
 
