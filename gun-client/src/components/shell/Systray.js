@@ -1,6 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { STATUS_OPTIONS } from '../../utils/presenceUtils';
-import xpAssets from '../../config/xpAssets';
 
 function Systray({
   isSuperpeer,
@@ -21,50 +20,33 @@ function Systray({
   onStatusChange,
   onOpenContacts,
   onSignOut,
-  onCloseMessenger,
-  assetMap = xpAssets
+  onCloseMessenger
 }) {
-  const formatTime = () => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  const [clockTime, setClockTime] = useState(formatTime);
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setClockTime(formatTime());
-    }, 1000);
-    return () => clearInterval(timer);
-  }, []);
-
   return (
     <div className="systray">
-      {isSuperpeer && (
-        <span className="superpeer-badge systray-slot" title={`Superpeer actief | ${connectedSuperpeers} peer(s) verbonden`}>
-          <img className="systray-glyph" src={assetMap.systray.usb} alt="" />
-        </span>
-      )}
+      {isSuperpeer && <span className="superpeer-badge" title={`Superpeer actief | ${connectedSuperpeers} peer(s) verbonden`}>{'\u{1F4E1}'}</span>}
       {isLoggedIn && (
-        <button
-          type="button"
-          className={`relay-status-badge systray-slot ${relayStatus.anyOnline ? 'relay-online' : 'relay-offline'}`}
+        <span
+          className={`relay-status-badge ${relayStatus.anyOnline ? 'relay-online' : 'relay-offline'}`}
           title={relayStatus.anyOnline
             ? `Relay verbonden${isSuperpeer ? ' | Superpeer actief' : ''} | ${connectedSuperpeers} peer(s)`
             : 'Relay offline - klik om te reconnecten'
           }
           onClick={() => !relayStatus.anyOnline && forceReconnect()}
         >
-          <span className={`relay-led ${relayStatus.anyOnline ? 'relay-led--online' : 'relay-led--offline'}`} aria-hidden="true" />
-        </button>
+          {relayStatus.anyOnline ? '\u{1F7E2}' : '\u{1F534}'}
+        </span>
       )}
       {isLoggedIn && messengerSignedIn && (
-        <button
-          type="button"
+        <span
           ref={systrayIconRef}
-          className="systray-chatlon-icon systray-slot"
+          className="systray-chatlon-icon"
           title={`Chatlon - ${currentStatusOption.label} (${getDisplayName(currentUser)})`}
           onClick={onToggleMenu}
         >
-          <img className="systray-chatlon-figure" src={assetMap.systray.chatlon} alt="" />
+          <span className="systray-chatlon-figure">{'\u{1F4AC}'}</span>
           <span className="systray-status-dot" style={{ backgroundColor: currentStatusOption.color }}></span>
-        </button>
+        </span>
       )}
       {showSystrayMenu && (
         <div ref={systrayMenuRef} className="systray-menu" onClick={(e) => e.stopPropagation()}>
@@ -76,31 +58,30 @@ function Systray({
             </div>
           </div>
           <div className="dropdown-separator" />
-          {STATUS_OPTIONS.map((opt) => (
-            <button
-              type="button"
+          {STATUS_OPTIONS.map(opt => (
+            <div
               key={opt.value}
               className={`dropdown-item ${userStatus === opt.value ? 'dropdown-item--checked' : ''}`}
               onClick={() => onStatusChange(opt.value)}
             >
               <span className="systray-status-indicator" style={{ backgroundColor: opt.color }}></span>
               <span className="dropdown-item-label">{opt.label}</span>
-            </button>
+            </div>
           ))}
           <div className="dropdown-separator" />
-          <button type="button" className="dropdown-item" onClick={onOpenContacts}>
+          <div className="dropdown-item" onClick={onOpenContacts}>
             <span className="dropdown-item-label">Chatlon openen</span>
-          </button>
-          <button type="button" className="dropdown-item" onClick={onSignOut}>
+          </div>
+          <div className="dropdown-item" onClick={onSignOut}>
             <span className="dropdown-item-label">Afmelden</span>
-          </button>
+          </div>
           <div className="dropdown-separator" />
-          <button type="button" className="dropdown-item" onClick={onCloseMessenger}>
+          <div className="dropdown-item" onClick={onCloseMessenger}>
             <span className="dropdown-item-label">Afsluiten</span>
-          </button>
+          </div>
         </div>
       )}
-      <span className="systray-clock systray-slot">{clockTime}</span>
+      {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
     </div>
   );
 }

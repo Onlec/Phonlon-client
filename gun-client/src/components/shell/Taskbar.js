@@ -1,6 +1,5 @@
 import React from 'react';
 import Systray from './Systray';
-import xpAssets from '../../config/xpAssets';
 
 function blurEditableActiveElement() {
   if (typeof document === 'undefined') return;
@@ -27,8 +26,7 @@ function Taskbar({
   panes,
   paneConfig,
   getDisplayName,
-  systrayProps,
-  assetMap = xpAssets
+  systrayProps
 }) {
   return (
     <div
@@ -44,13 +42,8 @@ function Taskbar({
       }}
     >
       <button
-        type="button"
         className={`start-btn ${isStartOpen ? 'start-btn--pressed' : ''}`}
-        data-open={isStartOpen ? 'true' : 'false'}
-        onClick={(e) => {
-          e.stopPropagation();
-          onToggleStartMenu();
-        }}
+        onClick={(e) => { e.stopPropagation(); onToggleStartMenu(); }}
         onContextMenu={(event) => {
           if (typeof onStartButtonContextMenu !== 'function') return;
           event.preventDefault();
@@ -58,8 +51,7 @@ function Taskbar({
           onStartButtonContextMenu(event);
         }}
       >
-        <img className="start-icon start-icon-image" src={assetMap.taskbar.startButton} alt="" aria-hidden="true" />
-        <span className="start-label">start</span>
+        <span className="start-icon">{'\u{1FA9F}'}</span> Start
       </button>
 
       <div className="taskbar-items">
@@ -75,7 +67,6 @@ function Taskbar({
               <div
                 key={paneId}
                 className={`taskbar-tab ${activePane === paneId ? 'taskbar-tab--active' : ''} ${isUnread ? 'taskbar-tab--unread' : ''}`}
-                data-active={activePane === paneId ? 'true' : 'false'}
                 onClick={() => onTaskbarClick(paneId)}
                 onContextMenu={(event) => {
                   if (typeof onTabContextMenu !== 'function') return;
@@ -99,7 +90,6 @@ function Taskbar({
               <div
                 key={paneId}
                 className={`taskbar-tab ${activePane === paneId ? 'taskbar-tab--active' : ''}`}
-                data-active={activePane === paneId ? 'true' : 'false'}
                 onClick={() => onTaskbarClick(paneId)}
                 onContextMenu={(event) => {
                   if (typeof onTabContextMenu !== 'function') return;
@@ -122,7 +112,6 @@ function Taskbar({
             <div
               key={paneId}
               className={`taskbar-tab ${activePane === paneId ? 'taskbar-tab--active' : ''}`}
-              data-active={activePane === paneId ? 'true' : 'false'}
               onClick={() => onTaskbarClick(paneId)}
               onContextMenu={(event) => {
                 if (typeof onTabContextMenu !== 'function') return;
@@ -139,7 +128,7 @@ function Taskbar({
         })}
       </div>
 
-      <Systray {...systrayProps} assetMap={assetMap} />
+      <Systray {...systrayProps} />
     </div>
   );
 }

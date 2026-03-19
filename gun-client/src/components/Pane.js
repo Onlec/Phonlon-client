@@ -1,24 +1,31 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { paneConfig } from '../paneConfig';
+import { log } from '../utils/debug';
 
 function Pane({ title, children, isMaximized, onMaximize, onClose, onMinimize, onFocus, zIndex, type, savedSize, onSizeChange, initialPosition, onPositionChange, isActive }) {
   const paneRef = useRef(null);
   const [isDragging, setIsDragging] = useState(false);
   const hasInitialized = useRef(false);
-
+  
+  // Get config for this pane type
   const config = paneConfig[type] || {};
   const defaultSize = config.defaultSize || (type === 'conversation' ? { width: 450, height: 400 } : { width: 450, height: 500 });
   const minSize = config.minSize || (type === 'conversation' ? { width: 450, height: 350 } : { width: 250, height: 200 });
-
+  
+  // Gebruik savedSize als die er is, anders defaultSize
   const [size, setSize] = useState(savedSize || defaultSize);
+  
+  // Gebruik initialPosition voor positie - ALLEEN bij mount
   const [position, setPosition] = useState(initialPosition || { left: 100, top: 50 });
 
+  // Update size als savedSize verandert (bij heropenen)
   useEffect(() => {
     if (savedSize) {
       setSize(savedSize);
     }
   }, [savedSize]);
 
+  // Update position ALLEEN als de pane nog niet geïnitialiseerd is
   useEffect(() => {
     if (!hasInitialized.current && initialPosition) {
       setPosition(initialPosition);
@@ -26,13 +33,17 @@ function Pane({ title, children, isMaximized, onMaximize, onClose, onMinimize, o
     }
   }, [initialPosition]);
 
-  useEffect(() => () => {
-    hasInitialized.current = false;
+  // Reset hasInitialized bij unmount
+  useEffect(() => {
+    return () => {
+      hasInitialized.current = false;
+    };
   }, []);
 
+  // Venster binnen scherm houden bij window resize
   useEffect(() => {
     const handleResize = () => {
-      setPosition((prev) => {
+      setPosition(prev => {
         const maxLeft = Math.max(0, window.innerWidth - 100);
         const maxTop = Math.max(0, window.innerHeight - 100);
         const newLeft = Math.min(prev.left, maxLeft);
@@ -50,16 +61,20 @@ function Pane({ title, children, isMaximized, onMaximize, onClose, onMinimize, o
   }, [onPositionChange]);
 
   const handleMouseDown = (e) => {
+    // Focus pane wanneer erop geklikt wordt
     if (onFocus) onFocus();
+    
     if (e.target.closest('.pane-controls')) return;
-
+    
+    // Check voor dubbelklik
     if (e.detail === 2) {
       onMaximize();
       return;
     }
-
+    
+    // Voorkom dragging als maximized
     if (isMaximized) return;
-
+    
     const pane = paneRef.current;
     const rect = pane.getBoundingClientRect();
     const offsetX = e.clientX - rect.left;
@@ -70,10 +85,10 @@ function Pane({ title, children, isMaximized, onMaximize, onClose, onMinimize, o
       let newX = moveEvent.clientX - offsetX;
       let newY = moveEvent.clientY - offsetY;
       if (newY < 0) newY = 0;
-
+      
       const newPosition = { left: newX, top: newY };
       setPosition(newPosition);
-
+      
       pane.style.left = `${newX}px`;
       pane.style.top = `${newY}px`;
       pane.style.transform = 'none';
@@ -81,14 +96,14 @@ function Pane({ title, children, isMaximized, onMaximize, onClose, onMinimize, o
 
     const handleMouseUp = () => {
       setIsDragging(false);
+      // Sla positie op bij einde van drag
       if (onPositionChange) {
-        const frameRect = pane.getBoundingClientRect();
-        onPositionChange({ left: frameRect.left, top: frameRect.top });
+        const rect = pane.getBoundingClientRect();
+        onPositionChange({ left: rect.left, top: rect.top });
       }
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
-
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
   };
@@ -115,78 +130,47 @@ function Pane({ title, children, isMaximized, onMaximize, onClose, onMinimize, o
       document.removeEventListener('mousemove', onMouseMove);
       document.removeEventListener('mouseup', onMouseUp);
     };
-
     document.addEventListener('mousemove', onMouseMove);
     document.addEventListener('mouseup', onMouseUp);
   };
 
-  const isInactive = isActive === false;
-
   return (
-    <div
+    <div 
       ref={paneRef}
-      className={`pane-frame type-${type} ${isMaximized ? 'pane-frame--maximized' : ''} ${isDragging ? 'pane-frame--dragging' : ''}`}
-      data-active={isInactive ? 'false' : 'true'}
-      data-window-state={isMaximized ? 'maximized' : 'normal'}
-      style={{
+      className={`pane-frame type-${type} ${isMaximized ? 'pane-frame--maximized' : ''}`}
+      style={{ 
         left: isMaximized ? 0 : position.left,
         top: isMaximized ? 0 : position.top,
         width: isMaximized ? '100vw' : size.width,
-        height: isMaximized ? 'calc(100vh - 30px)' : size.height,
-        zIndex,
+        height: isMaximized ? undefined : size.height,
+        zIndex: zIndex,
         position: isMaximized ? 'fixed' : 'absolute',
         transform: 'none'
       }}
       onMouseDown={() => onFocus && onFocus()}
     >
       <div className="pane-inner-container">
-        <div
-          className={`pane-header ${isInactive ? 'pane-header--inactive' : ''}`}
-          data-active={isInactive ? 'false' : 'true'}
-          onMouseDown={handleMouseDown}
-        >
+        <div className={`pane-header ${isActive === false ? 'pane-header--inactive' : ''}`} onMouseDown={handleMouseDown}>
           <div className="pane-title-section">
-            <span className="pane-icon" aria-hidden="true" />
+            <span className="pane-icon">💤</span>
             <span className="pane-title">{title}</span>
           </div>
           <div className="pane-controls">
+            <button className="pane-btn pane-btn--minimize" onClick={onMinimize}>_</button>
             <button
-              type="button"
-              className="pane-btn pane-btn--minimize"
-              data-active={isInactive ? 'false' : 'true'}
-              onClick={onMinimize}
-              aria-label="Minimaliseren"
-              title="Minimaliseren"
-            >
-              <span className="pane-btn-glyph pane-btn-glyph--minimize" aria-hidden="true" />
-            </button>
-            <button
-              type="button"
-              className="pane-btn pane-btn--maximize"
-              data-active={isInactive ? 'false' : 'true'}
-              data-maximized={isMaximized ? 'true' : 'false'}
+              className={`pane-btn ${isMaximized ? 'pane-btn--maximized' : 'pane-btn--maximize'}`}
               onClick={onMaximize}
-              aria-label={isMaximized ? 'Herstellen' : 'Maximaliseren'}
-              title={isMaximized ? 'Herstellen' : 'Maximaliseren'}
             >
-              <span
-                className={`pane-btn-glyph ${isMaximized ? 'pane-btn-glyph--restore' : 'pane-btn-glyph--maximize'}`}
-                aria-hidden="true"
-              />
+              {isMaximized ? '❐' : '▢'}
             </button>
-            <button
-              type="button"
-              className="pane-btn pane-btn--close"
-              data-active={isInactive ? 'false' : 'true'}
-              onClick={onClose}
-              aria-label="Sluiten"
-              title="Sluiten"
-            >
-              <span className="pane-btn-glyph pane-btn-glyph--close" aria-hidden="true" />
-            </button>
+            <button className="pane-btn pane-btn--close" onClick={onClose}>X</button>
           </div>
         </div>
-        <div className="pane-content">{children}</div>
+        <div className="pane-body">
+          <div className="pane-content">
+            {children}
+          </div>
+        </div>
       </div>
       {!isMaximized && type !== 'login' && (
         <>

@@ -10,6 +10,14 @@
   box-shadow: inset 1px 1px 0 #FFFFFF, inset -1px -1px 0 #404040, 2px 2px 0 #000;
 }
 
+[data-theme="klassiek"] .pane-inner-container {
+  background: transparent;
+}
+
+[data-theme="klassiek"] .pane-body {
+  padding: 0;
+}
+
 /* Titelbalk: horizontaal gradient zoals Win98 */
 [data-theme="klassiek"] .pane-header {
   background: linear-gradient(to right, var(--win-titlebar-a), var(--win-titlebar-b));
@@ -383,5 +391,175 @@
 .chat-login-footer a:hover {
   text-decoration: underline;
   color: var(--link-color-light);
+}
+
+/* ── Hard-line start button: Royale / Royale Noir / Zune / Energy Blue ── */
+[data-theme="royale"] .start-btn,
+[data-theme="royale-noir"] .start-btn,
+[data-theme="zune"] .start-btn,
+[data-theme="energy-blue"] .start-btn {
+  background: linear-gradient(
+    to bottom,
+    var(--startbtn-b) 0%,
+    var(--startbtn-a) 49%,
+    color-mix(in srgb, var(--startbtn-a) 70%, black) 50%,
+    var(--startbtn-a) 100%
+  );
+}
+
+[data-theme="royale"] .start-btn:hover,
+[data-theme="royale-noir"] .start-btn:hover,
+[data-theme="zune"] .start-btn:hover,
+[data-theme="energy-blue"] .start-btn:hover {
+  background: linear-gradient(
+    to bottom,
+    var(--startbtn-hover-b) 0%,
+    var(--startbtn-hover-a) 49%,
+    color-mix(in srgb, var(--startbtn-hover-a) 70%, black) 50%,
+    var(--startbtn-hover-a) 100%
+  );
+}
+
+/* ── Hard-line titelbalk: zelfde harde lijn als taskbar ── */
+[data-theme="royale"] .pane-header,
+[data-theme="royale-noir"] .pane-header,
+[data-theme="zune"] .pane-header,
+[data-theme="energy-blue"] .pane-header {
+  background: linear-gradient(
+    to bottom,
+    var(--win-titlebar-b) 0%,
+    var(--win-titlebar-a) 49%,
+    color-mix(in srgb, var(--win-titlebar-a) 70%, black) 50%,
+    var(--win-titlebar-d) 100%
+  );
+}
+
+[data-theme="royale"] .pane-header--inactive,
+[data-theme="royale-noir"] .pane-header--inactive,
+[data-theme="zune"] .pane-header--inactive,
+[data-theme="energy-blue"] .pane-header--inactive {
+  background: linear-gradient(
+    to bottom,
+    var(--win-titlebar-inactive-b) 0%,
+    var(--win-titlebar-inactive-a) 49%,
+    color-mix(in srgb, var(--win-titlebar-inactive-a) 70%, black) 50%,
+    var(--win-titlebar-inactive-a) 100%
+  );
+}
+
+/* ── Hard-line startmenu header/footer ── */
+[data-theme="royale"] .start-menu-header,
+[data-theme="royale-noir"] .start-menu-header,
+[data-theme="zune"] .start-menu-header,
+[data-theme="energy-blue"] .start-menu-header,
+[data-theme="royale"] .start-menu-footer,
+[data-theme="royale-noir"] .start-menu-footer,
+[data-theme="zune"] .start-menu-footer,
+[data-theme="energy-blue"] .start-menu-footer {
+  background: linear-gradient(
+    to bottom,
+    var(--startmenu-header-a) 0%,
+    var(--startmenu-header-b) 49%,
+    color-mix(in srgb, var(--startmenu-header-b) 70%, black) 50%,
+    var(--startmenu-header-b) 100%
+  );
+}
+
+/* ── Hard-line titelbalk-knoppen ── */
+[data-theme="royale"] .pane-btn--minimize,
+[data-theme="royale-noir"] .pane-btn--minimize,
+[data-theme="zune"] .pane-btn--minimize,
+[data-theme="energy-blue"] .pane-btn--minimize,
+[data-theme="royale"] .pane-btn--maximize,
+[data-theme="royale-noir"] .pane-btn--maximize,
+[data-theme="zune"] .pane-btn--maximize,
+[data-theme="energy-blue"] .pane-btn--maximize {
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--win-btn-bg) 60%, white) 0%,
+    var(--win-btn-bg) 49%,
+    color-mix(in srgb, var(--win-btn-bg) 70%, black) 50%,
+    color-mix(in srgb, var(--win-btn-bg) 85%, black) 100%
+  );
+}
+
+[data-theme="royale"] .pane-btn--close,
+[data-theme="royale-noir"] .pane-btn--close,
+[data-theme="zune"] .pane-btn--close,
+[data-theme="energy-blue"] .pane-btn--close {
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--pane-btn-close-bg, #e81123) 60%, white) 0%,
+    var(--pane-btn-close-bg, #e81123) 49%,
+    color-mix(in srgb, var(--pane-btn-close-bg, #e81123) 70%, black) 50%,
+    color-mix(in srgb, var(--pane-btn-close-bg, #e81123) 85%, black) 100%
+  );
+}
+
+/* ── Hard-line taskbar: zelfde harde lijn op 50% als de startknop ── */
+[data-theme="royale"] .taskbar,
+[data-theme="royale-noir"] .taskbar,
+[data-theme="zune"] .taskbar,
+[data-theme="energy-blue"] .taskbar {
+  background: linear-gradient(
+    to bottom,
+    var(--taskbar-b) 0%,
+    var(--taskbar-a) 49%,
+    color-mix(in srgb, var(--taskbar-a) 70%, black) 50%,
+    var(--taskbar-a) 100%
+  );
+}
+
+/* ── Hard-line tabs: Royale / Royale Noir / Zune / Energy Blue ── */
+[data-theme="royale"] .taskbar-tab,
+[data-theme="royale-noir"] .taskbar-tab,
+[data-theme="zune"] .taskbar-tab,
+[data-theme="energy-blue"] .taskbar-tab {
+  background: linear-gradient(
+    to bottom,
+    var(--tab-a) 0%,
+    var(--tab-b) 49%,
+    color-mix(in srgb, var(--tab-b) 70%, black) 50%,
+    var(--tab-b) 100%
+  );
+}
+
+[data-theme="royale"] .taskbar-tab:hover,
+[data-theme="royale-noir"] .taskbar-tab:hover,
+[data-theme="zune"] .taskbar-tab:hover,
+[data-theme="energy-blue"] .taskbar-tab:hover {
+  background: linear-gradient(
+    to bottom,
+    var(--tab-hover-a) 0%,
+    var(--tab-hover-b) 49%,
+    color-mix(in srgb, var(--tab-hover-b) 70%, black) 50%,
+    var(--tab-hover-b) 100%
+  );
+}
+
+[data-theme="royale"] .taskbar-tab.taskbar-tab--active,
+[data-theme="royale-noir"] .taskbar-tab.taskbar-tab--active,
+[data-theme="zune"] .taskbar-tab.taskbar-tab--active,
+[data-theme="energy-blue"] .taskbar-tab.taskbar-tab--active {
+  background: linear-gradient(
+    to bottom,
+    var(--tab-active-a) 0%,
+    var(--tab-active-b) 49%,
+    color-mix(in srgb, var(--tab-active-b) 70%, black) 50%,
+    var(--tab-active-b) 100%
+  );
+}
+
+[data-theme="royale"] .taskbar-tab.taskbar-tab--unread,
+[data-theme="royale-noir"] .taskbar-tab.taskbar-tab--unread,
+[data-theme="zune"] .taskbar-tab.taskbar-tab--unread,
+[data-theme="energy-blue"] .taskbar-tab.taskbar-tab--unread {
+  background: linear-gradient(
+    to bottom,
+    var(--tab-notify-a) 0%,
+    var(--tab-notify-b) 49%,
+    color-mix(in srgb, var(--tab-notify-b) 70%, black) 50%,
+    var(--tab-notify-b) 100%
+  ) !important;
 }
 

@@ -3,10 +3,6 @@ import { useCallback, useState } from 'react';
 export function useStartMenuManager() {
   const [isStartOpen, setIsStartOpen] = useState(false);
 
-  const openStartMenu = useCallback(() => {
-    setIsStartOpen(true);
-  }, []);
-
   const toggleStartMenu = useCallback(() => {
     setIsStartOpen((prev) => !prev);
   }, []);
@@ -18,7 +14,6 @@ export function useStartMenuManager() {
   return {
     isStartOpen,
     setIsStartOpen,
-    openStartMenu,
     toggleStartMenu,
     closeStartMenu
   };

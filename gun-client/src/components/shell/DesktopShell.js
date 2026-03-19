@@ -19,6 +19,7 @@ function blurEditableActiveElement() {
 function DesktopShell({
   onDesktopClick,
   wallpaperStyle,
+  themeStyle,
   dataTheme,
   dataFontsize,
   scanlinesEnabled,
@@ -36,6 +37,14 @@ function DesktopShell({
   onToastClick,
   contextMenu
 }) {
+  const desktopStyle =
+    wallpaperStyle || themeStyle
+      ? {
+          ...(wallpaperStyle || {}),
+          ...(themeStyle || {}),
+        }
+      : undefined;
+
   return (
     <div
       className="desktop"
@@ -60,7 +69,7 @@ function DesktopShell({
             : []
         });
       }}
-      style={wallpaperStyle}
+      style={desktopStyle}
       data-theme={dataTheme}
       data-fontsize={dataFontsize}
     >

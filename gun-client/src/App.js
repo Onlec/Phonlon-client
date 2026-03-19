@@ -53,9 +53,9 @@ import { useSettings } from './contexts/SettingsContext';
 import { useAvatar } from './contexts/AvatarContext';
 import { useWallpaper } from './contexts/WallpaperContext';
 import { FEATURE_FLAGS } from './config/featureFlags';
-import xpAssets from './config/xpAssets';
 import { removeScoped } from './utils/storageScope';
 import { readUserPrefOnce, PREF_KEYS } from './utils/userPrefsGun';
+import { buildLunaCustomThemeStyle } from './utils/lunaCustomTheme';
 
 
 // Helper: lees lokale naam uit chatlon_users localStorage
@@ -127,6 +127,10 @@ function App() {
   getDisplayNameRef.current = getDisplayName;
   const { getWallpaperStyle } = useWallpaper();
   const { playSound, playSoundAsync } = useSounds();
+  const desktopThemeStyle = useMemo(
+    () => buildLunaCustomThemeStyle(settings.colorScheme, settings.customLunaTheme),
+    [settings.colorScheme, settings.customLunaTheme]
+  );
   
   // Toast notifications
   const {
@@ -579,19 +583,6 @@ const onTaskbarClick = React.useCallback((paneId) => {
     });
   }, [messengerSignedIn, closeAllConversations, closeAllGames]);
 
-  const desktopManager = useDesktopManager({
-    paneConfig,
-    onOpenPane: desktopCommandBus.openPane,
-    currentUser
-  });
-
-  const contextMenuManager = useContextMenuManager({
-    enabled: FEATURE_FLAGS.contextMenus,
-    onMenuOpen: () => {
-      closeStartMenu();
-    }
-  });
-
   const systrayManager = useSystrayManager({
     userStatus,
     onStatusChange: handleStatusChange,
@@ -608,11 +599,17 @@ const onTaskbarClick = React.useCallback((paneId) => {
       closeAllGames();
       setMessengerSignedIn(false);
       desktopCommandBus.closePane('contacts');
-    },
-    onOpenMenu: () => {
-      closeStartMenu();
-      contextMenuManager.closeMenu();
     }
+  });
+
+  const desktopManager = useDesktopManager({
+    paneConfig,
+    onOpenPane: desktopCommandBus.openPane,
+    currentUser
+  });
+
+  const contextMenuManager = useContextMenuManager({
+    enabled: FEATURE_FLAGS.contextMenus
   });
 
   const buildDesktopActions = React.useCallback(() => ([
@@ -873,18 +870,6 @@ const onTaskbarClick = React.useCallback((paneId) => {
     });
   }, [contextMenuManager, buildStartButtonActions]);
 
-  const handleDesktopClick = React.useCallback(() => {
-    closeStartMenu();
-    systrayManager.closeSystrayMenu();
-    contextMenuManager.closeMenu();
-  }, [closeStartMenu, systrayManager, contextMenuManager]);
-
-  const handleToggleStartMenu = React.useCallback(() => {
-    systrayManager.closeSystrayMenu();
-    contextMenuManager.closeMenu();
-    desktopCommandBus.toggleStart();
-  }, [systrayManager, contextMenuManager, desktopCommandBus]);
-
   // Presence owner: usePresenceCoordinator.
   // ContactsPane consumeert alleen sharedContactPresence en subscribe't niet zelf.
 
@@ -990,8 +975,9 @@ const onTaskbarClick = React.useCallback((paneId) => {
   return (
     <>
       <DesktopShell
-        onDesktopClick={handleDesktopClick}
+        onDesktopClick={closeStartMenu}
         wallpaperStyle={getWallpaperStyle()}
+        themeStyle={desktopThemeStyle}
         dataTheme={settings.colorScheme !== 'blauw' ? settings.colorScheme : undefined}
         dataFontsize={settings.fontSize !== 'normaal' ? settings.fontSize : undefined}
         scanlinesEnabled={scanlinesEnabled}
@@ -1046,7 +1032,6 @@ const onTaskbarClick = React.useCallback((paneId) => {
           currentUser,
           getAvatar,
           getLocalUserInfo,
-          assetMap: xpAssets,
           onOpenPane: desktopCommandBus.openPane,
           onCloseStartMenu: closeStartMenu,
           onLogoff: handleLogoff,
@@ -1054,7 +1039,7 @@ const onTaskbarClick = React.useCallback((paneId) => {
         }}
         taskbarProps={{
           isStartOpen,
-          onToggleStartMenu: handleToggleStartMenu,
+          onToggleStartMenu: desktopCommandBus.toggleStart,
           onStartButtonContextMenu: handleStartButtonContextMenu,
           onTaskbarContextMenu: handleTaskbarContextMenu,
           paneOrder,
@@ -1067,7 +1052,6 @@ const onTaskbarClick = React.useCallback((paneId) => {
           panes,
           paneConfig,
           getDisplayName,
-          assetMap: xpAssets,
           systrayProps: {
             isSuperpeer,
             connectedSuperpeers,
@@ -1087,8 +1071,7 @@ const onTaskbarClick = React.useCallback((paneId) => {
             onStatusChange: systrayManager.onStatusChange,
             onOpenContacts: systrayManager.onOpenContacts,
             onSignOut: systrayManager.onSignOut,
-            onCloseMessenger: systrayManager.onCloseMessenger,
-            assetMap: xpAssets
+            onCloseMessenger: systrayManager.onCloseMessenger
           }
         }}
         toasts={toasts}

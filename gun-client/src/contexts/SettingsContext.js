@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { log } from '../utils/debug';
 import { readUserPrefOnce, writeUserPref, PREF_KEYS } from '../utils/userPrefsGun';
+import { DEFAULT_LUNA_CUSTOM_THEME, normalizeCustomLunaTheme } from '../utils/lunaCustomTheme';
 
 const SettingsContext = createContext();
 
@@ -13,10 +14,11 @@ export function useSettings() {
 }
 
 // Default settings
-const DEFAULT_SETTINGS = {
+export const DEFAULT_SETTINGS = {
   // Uiterlijk
   fontSize: 'normaal',
   colorScheme: 'blauw',
+  customLunaTheme: DEFAULT_LUNA_CUSTOM_THEME,
   
   // Geluid
   systemSounds: true,
@@ -37,11 +39,22 @@ const DEFAULT_SETTINGS = {
   debugMode: false,
 };
 
+export function normalizeSettings(nextSettings) {
+  const normalizedSettings =
+    nextSettings && typeof nextSettings === 'object' ? nextSettings : {};
+
+  return {
+    ...DEFAULT_SETTINGS,
+    ...normalizedSettings,
+    customLunaTheme: normalizeCustomLunaTheme(normalizedSettings.customLunaTheme),
+  };
+}
+
 export function SettingsProvider({ children }) {
   const [storageUserKey, setStorageUserKey] = useState('guest');
   const hydratingRef = useRef(false);
   const loadedKeyRef = useRef('guest');
-  const [settings, setSettings] = useState(DEFAULT_SETTINGS);
+  const [settings, setSettings] = useState(() => normalizeSettings(DEFAULT_SETTINGS));
 
   useEffect(() => {
     let cancelled = false;
@@ -51,11 +64,11 @@ export function SettingsProvider({ children }) {
       try {
         const loaded = await readUserPrefOnce(storageUserKey, PREF_KEYS.SETTINGS, DEFAULT_SETTINGS);
         if (cancelled) return;
-        setSettings({ ...DEFAULT_SETTINGS, ...(loaded || {}) });
+        setSettings(normalizeSettings(loaded));
       } catch (e) {
         log('[Settings] Error loading user prefs settings:', e);
         if (!cancelled) {
-          setSettings(DEFAULT_SETTINGS);
+          setSettings(normalizeSettings(DEFAULT_SETTINGS));
         }
       }
     })();
@@ -73,7 +86,7 @@ export function SettingsProvider({ children }) {
       }
       return;
     }
-    void writeUserPref(storageUserKey, PREF_KEYS.SETTINGS, settings)
+    writeUserPref(storageUserKey, PREF_KEYS.SETTINGS, settings)
       .then(() => {
         log('[Settings] Saved settings:', settings);
       })
@@ -83,18 +96,18 @@ export function SettingsProvider({ children }) {
   }, [settings, storageUserKey]);
 
   // Update single setting
-    const updateSetting = (key, value) => {
+  const updateSetting = (key, value) => {
     console.log('[SettingsContext] Updating:', key, value);
     setSettings(prev => {
-        const newSettings = { ...prev, [key]: value };
+        const newSettings = normalizeSettings({ ...prev, [key]: value });
         console.log('[SettingsContext] New settings:', newSettings);
         return newSettings;
     });
-    };
+  };
 
   // Update multiple settings at once
   const updateSettings = (updates) => {
-    setSettings(prev => ({
+    setSettings(prev => normalizeSettings({
       ...prev,
       ...updates
     }));
@@ -102,7 +115,7 @@ export function SettingsProvider({ children }) {
 
   // Reset to defaults
   const resetSettings = () => {
-    setSettings(DEFAULT_SETTINGS);
+    setSettings(normalizeSettings(DEFAULT_SETTINGS));
     log('[Settings] Reset to defaults');
   };
 

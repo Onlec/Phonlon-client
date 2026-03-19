@@ -6,9 +6,7 @@ export function useSystrayManager({
   onStatusChange,
   onOpenContacts,
   onSignOut,
-  onCloseMessenger,
-  onOpenMenu,
-  onCloseMenu
+  onCloseMessenger
 }) {
   const [showSystrayMenu, setShowSystrayMenu] = useState(false);
   const systrayMenuRef = useRef(null);
@@ -21,44 +19,32 @@ export function useSystrayManager({
 
   const closeSystrayMenu = useCallback(() => {
     setShowSystrayMenu(false);
-    if (typeof onCloseMenu === 'function') {
-      onCloseMenu();
-    }
-  }, [onCloseMenu]);
+  }, []);
 
   const onToggleMenu = useCallback((e) => {
     e.stopPropagation();
-    setShowSystrayMenu((prev) => {
-      const next = !prev;
-      if (next && typeof onOpenMenu === 'function') {
-        onOpenMenu();
-      }
-      if (!next && typeof onCloseMenu === 'function') {
-        onCloseMenu();
-      }
-      return next;
-    });
-  }, [onOpenMenu, onCloseMenu]);
+    setShowSystrayMenu((prev) => !prev);
+  }, []);
 
   const handleStatusChange = useCallback((value) => {
     onStatusChange(value);
-    closeSystrayMenu();
-  }, [onStatusChange, closeSystrayMenu]);
+    setShowSystrayMenu(false);
+  }, [onStatusChange]);
 
   const handleOpenContacts = useCallback(() => {
     onOpenContacts();
-    closeSystrayMenu();
-  }, [onOpenContacts, closeSystrayMenu]);
+    setShowSystrayMenu(false);
+  }, [onOpenContacts]);
 
   const handleSignOut = useCallback(() => {
     onSignOut();
-    closeSystrayMenu();
-  }, [onSignOut, closeSystrayMenu]);
+    setShowSystrayMenu(false);
+  }, [onSignOut]);
 
   const handleCloseMessenger = useCallback(() => {
     onCloseMessenger();
-    closeSystrayMenu();
-  }, [onCloseMessenger, closeSystrayMenu]);
+    setShowSystrayMenu(false);
+  }, [onCloseMessenger]);
 
   useEffect(() => {
     if (!showSystrayMenu) return;
@@ -72,18 +58,9 @@ export function useSystrayManager({
         setShowSystrayMenu(false);
       }
     };
-    const handleKeyDown = (event) => {
-      if (event.key === 'Escape') {
-        closeSystrayMenu();
-      }
-    };
     document.addEventListener('mousedown', handleClick);
-    document.addEventListener('keydown', handleKeyDown);
-    return () => {
-      document.removeEventListener('mousedown', handleClick);
-      document.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [showSystrayMenu, closeSystrayMenu]);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [showSystrayMenu]);
 
   return {
     showSystrayMenu,

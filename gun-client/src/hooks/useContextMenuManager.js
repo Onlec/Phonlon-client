@@ -1,15 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-export function useContextMenuManager({ enabled = false, onMenuOpen, onMenuClose } = {}) {
+export function useContextMenuManager({ enabled = false } = {}) {
   const [menuState, setMenuState] = useState(null);
   const hostRef = useRef(null);
 
   const closeMenu = useCallback(() => {
     setMenuState(null);
-    if (typeof onMenuClose === 'function') {
-      onMenuClose();
-    }
-  }, [onMenuClose]);
+  }, []);
 
   const openMenu = useCallback((payload) => {
     if (!enabled) return;
@@ -24,10 +21,7 @@ export function useContextMenuManager({ enabled = false, onMenuOpen, onMenuClose
       target: payload.target || null,
       actions: Array.isArray(payload.actions) ? payload.actions : []
     });
-    if (typeof onMenuOpen === 'function') {
-      onMenuOpen();
-    }
-  }, [enabled, onMenuOpen]);
+  }, [enabled]);
 
   const handleContextMenu = useCallback((event) => {
     if (!enabled) return;
