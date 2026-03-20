@@ -1,10 +1,10 @@
 import React from 'react';
-import ToastNotification from '../ToastNotification';
-import DesktopShortcuts from './DesktopShortcuts';
-import PaneLayer from './PaneLayer';
-import StartMenu from './StartMenu';
-import Taskbar from './Taskbar';
-import ContextMenuHost from './ContextMenuHost';
+import ToastNotification from '../../ToastNotification';
+import DesktopShortcuts from '../DesktopShortcuts';
+import PaneLayer from '../PaneLayer';
+import ContextMenuHost from '../ContextMenuHost';
+import LigerDock from './LigerDock';
+import LigerMenuBar from './LigerMenuBar';
 
 function blurEditableActiveElement() {
   if (typeof document === 'undefined') return;
@@ -16,7 +16,7 @@ function blurEditableActiveElement() {
   }
 }
 
-function DesktopShell({ shellProps }) {
+function LigerDesktopShell({ shellProps }) {
   const {
     session,
     shortcuts,
@@ -37,7 +37,7 @@ function DesktopShell({ shellProps }) {
 
   return (
     <div
-      className="desktop"
+      className="desktop desktop--liger liger-desktop"
       onMouseDown={(event) => {
         if (event.target.closest('.pane-frame')) return;
         if (event.target.closest('input, textarea, [contenteditable="true"]')) return;
@@ -62,9 +62,23 @@ function DesktopShell({ shellProps }) {
       style={desktopStyle}
       data-theme={session.dataTheme}
       data-fontsize={session.dataFontsize}
+      data-os="liger"
     >
-      <div id="portal-root"></div>
-      <div className={`scanlines-overlay ${status.scanlinesEnabled ? '' : 'scanlines-overlay--disabled'}`}></div>
+      <div id="portal-root" />
+      <div className={`scanlines-overlay ${status.scanlinesEnabled ? '' : 'scanlines-overlay--disabled'}`} />
+
+      <LigerMenuBar
+        activeAppName={windows.activeAppName}
+        currentUser={session.currentUser}
+        relayStatus={status.relayStatus}
+        isSuperpeer={status.isSuperpeer}
+        connectedSuperpeers={status.connectedSuperpeers}
+        currentStatusOption={status.currentStatusOption}
+        windowItems={windows.windowItems}
+        onOpenContacts={navigation.onOpenContacts}
+        onLogoff={session.onLogoff}
+        onShutdown={session.onShutdown}
+      />
 
       <DesktopShortcuts
         shortcuts={shortcuts.items}
@@ -78,9 +92,7 @@ function DesktopShell({ shellProps }) {
 
       <PaneLayer {...windows.paneLayerProps} chromeVariant={windows.chromeVariant} />
 
-      <StartMenu {...navigation.startMenuProps} />
-
-      <Taskbar {...navigation.taskbarProps} />
+      <LigerDock items={navigation.dockItems} />
 
       <div className="toast-container">
         {notifications.toasts.map((toast) => (
@@ -103,4 +115,4 @@ function DesktopShell({ shellProps }) {
   );
 }
 
-export default DesktopShell;
+export default LigerDesktopShell;

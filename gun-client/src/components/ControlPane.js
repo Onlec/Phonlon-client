@@ -19,7 +19,7 @@ const PRESET_AVATARS = ['cat.jpg', 'egg.jpg', 'crab.jpg', 'blocks.jpg', 'pug.jpg
 
 function ControlPane() {
   const { scanlinesEnabled, toggleScanlines } = useScanlinesPreference();
-  const { settings, updateSetting, resetSettings } = useSettings();
+  const { settings, updateSetting, resetSettings, appearanceVariant } = useSettings();
   const { confirm, alert } = useDialog();
   const [selectedCategoryId, setSelectedCategoryId] = useState(null);
   const [showResetSuccess, setShowResetSuccess] = useState(false);
@@ -334,6 +334,14 @@ function ControlPane() {
           )}
 
           {!selectedCategory.customRender && <div className="cp-settings-list">
+            {selectedCategory.id === 'appearance' && (
+              <div className="cp-setting-item">
+                <div className="cp-setting-description">
+                  Deze thema-instellingen gelden voor {appearanceVariant === 'liger' ? 'Liger OS' : 'Panes dX'}.
+                </div>
+              </div>
+            )}
+
             {selectedCategory.settings.map(setting => (
               <div key={setting.id} className="cp-setting-item">
                 <div className="cp-setting-main">

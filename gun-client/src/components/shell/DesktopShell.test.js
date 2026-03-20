@@ -13,25 +13,41 @@ describe('DesktopShell', () => {
   test('applies runtime luna custom vars to the desktop root', () => {
     const { container } = render(
       <DesktopShell
-        onDesktopClick={jest.fn()}
-        wallpaperStyle={{ backgroundColor: 'rgb(1, 2, 3)' }}
-        themeStyle={{ '--custom-luna-seed': '#123456' }}
-        dataTheme="luna-custom"
-        dataFontsize="groot"
-        scanlinesEnabled={false}
-        desktopShortcuts={[]}
-        onOpenShortcut={jest.fn()}
-        onShortcutContextMenu={jest.fn()}
-        onRenameShortcut={jest.fn()}
-        onMoveShortcut={jest.fn()}
-        gridConfig={{}}
-        paneLayerProps={{}}
-        startMenuProps={{}}
-        taskbarProps={{}}
-        toasts={[]}
-        removeToast={jest.fn()}
-        onToastClick={jest.fn()}
-        contextMenu={{ enabled: false }}
+        shellProps={{
+          session: {
+            onDesktopClick: jest.fn(),
+            wallpaperStyle: { backgroundColor: 'rgb(1, 2, 3)' },
+            themeStyle: { '--custom-luna-seed': '#123456' },
+            dataTheme: 'luna-custom',
+            dataFontsize: 'groot'
+          },
+          shortcuts: {
+            items: [],
+            onOpen: jest.fn(),
+            onContextMenu: jest.fn(),
+            onRename: jest.fn(),
+            onMove: jest.fn(),
+            gridConfig: {},
+            layoutVariant: 'dx'
+          },
+          windows: {
+            paneLayerProps: {},
+            chromeVariant: 'dx'
+          },
+          navigation: {
+            startMenuProps: {},
+            taskbarProps: {}
+          },
+          notifications: {
+            toasts: [],
+            removeToast: jest.fn(),
+            onToastClick: jest.fn()
+          },
+          status: {
+            scanlinesEnabled: false
+          },
+          contextMenu: { enabled: false }
+        }}
       />
     );
 

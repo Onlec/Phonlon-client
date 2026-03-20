@@ -73,6 +73,7 @@ describe('ControlPane', () => {
       }),
       updateSetting: mockUpdateSetting,
       resetSettings: mockResetSettings,
+      appearanceVariant: 'dx',
     });
 
     render(<ControlPane />);
@@ -112,6 +113,7 @@ describe('ControlPane', () => {
       }),
       updateSetting: mockUpdateSetting,
       resetSettings: mockResetSettings,
+      appearanceVariant: 'dx',
     });
 
     render(<ControlPane />);

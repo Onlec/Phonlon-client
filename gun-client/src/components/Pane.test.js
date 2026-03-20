@@ -67,4 +67,16 @@ describe('Pane', () => {
     expect(frame.style.height).toBe('');
     expect(body).not.toBeNull();
   });
+
+  test('renders the liger chrome variant with stoplight controls', () => {
+    const { container } = render(
+      <Pane {...buildProps({ chromeVariant: 'liger' })}>
+        <div>Child</div>
+      </Pane>
+    );
+
+    expect(container.querySelector('.pane-frame--liger')).toBeTruthy();
+    expect(container.querySelector('.pane-controls--liger')).toBeTruthy();
+    expect(container.querySelector('.pane-title-section--liger')).toBeTruthy();
+  });
 });
