@@ -1,0 +1,178 @@
+import React from 'react';
+import Pane from '../Pane';
+import ConversationPane from '../panes/ConversationPane';
+import GamePane from '../panes/GamePane';
+import { resolvePaneTitle } from '../../utils/ligerShell';
+
+function PaneLayer({
+  paneConfig,
+  panes,
+  conversations,
+  games,
+  focusPane,
+  getZIndex,
+  toggleMaximizePane,
+  closePane,
+  minimizePane,
+  activePane,
+  savedSizes,
+  handleSizeChange,
+  getInitialPosition,
+  handlePositionChange,
+  openConversation,
+  openGamePane,
+  closeGamePane,
+  minimizeGamePane,
+  toggleMaximizeGamePane,
+  userStatus,
+  handleStatusChange,
+  handleLogoff,
+  closeAllConversations,
+  closeAllGames,
+  setMessengerSignedIn,
+  nowPlaying,
+  currentUser,
+  messengerSignedIn,
+  messengerCoordinator,
+  setNowPlaying,
+  toggleMaximizeConversation,
+  closeConversation,
+  minimizeConversation,
+  unreadMetadata,
+  clearNotificationTime,
+  sharedContactPresence,
+  getDisplayName,
+  chromeVariant = 'dx'
+}) {
+  return (
+    <div className="pane-layer">
+      {Object.entries(paneConfig).map(([paneName, config]) => {
+        const pane = panes[paneName];
+        if (!pane || !pane.isOpen) return null;
+
+        const Component = config.component;
+
+        return (
+          <div key={paneName} onMouseDown={() => focusPane(paneName)} style={{ display: pane.isMinimized ? 'none' : 'block', zIndex: getZIndex(paneName), position: 'absolute' }}>
+            <Pane
+              title={resolvePaneTitle(config, chromeVariant)}
+              type={paneName}
+              chromeVariant={chromeVariant}
+              isMaximized={pane.isMaximized}
+              onMaximize={() => toggleMaximizePane(paneName)}
+              onClose={() => closePane(paneName)}
+              onMinimize={() => minimizePane(paneName)}
+              zIndex={getZIndex(paneName)}
+              onFocus={() => focusPane(paneName)}
+              isActive={activePane === paneName}
+              savedSize={savedSizes[paneName]}
+              onSizeChange={(newSize) => handleSizeChange(paneName, newSize)}
+              initialPosition={pane.initialPos || getInitialPosition(paneName)}
+              onPositionChange={(newPosition) => handlePositionChange(paneName, newPosition)}
+            >
+              {paneName === 'contacts' ? (
+                <Component
+                  onOpenConversation={openConversation}
+                  userStatus={userStatus}
+                  onStatusChange={handleStatusChange}
+                  onLogoff={handleLogoff}
+                  onSignOut={() => { closeAllConversations(); closeAllGames(); }}
+                  onClosePane={() => { closeAllConversations(); closeAllGames(); setMessengerSignedIn(false); closePane('contacts'); }}
+                  nowPlaying={nowPlaying}
+                  currentUserEmail={currentUser}
+                  messengerSignedIn={messengerSignedIn}
+                  setMessengerSignedIn={setMessengerSignedIn}
+                  contactPresenceMap={sharedContactPresence}
+                />
+              ) : paneName === 'media' ? (
+                <Component onNowPlayingChange={setNowPlaying} />
+              ) : (
+                <Component />
+              )}
+            </Pane>
+          </div>
+        );
+      })}
+
+      {Object.entries(conversations).map(([convId, conv]) => {
+        if (!conv || !conv.isOpen) return null;
+
+        return (
+          <div
+            key={convId}
+            onMouseDown={() => focusPane(convId)}
+            style={{ display: conv.isMinimized ? 'none' : 'block', zIndex: getZIndex(convId), position: 'absolute' }}
+          >
+            <Pane
+              title={`${getDisplayName(conv.contactName)} - Gesprek`}
+              type="conversation"
+              chromeVariant={chromeVariant}
+              isMaximized={conv.isMaximized}
+              onMaximize={() => toggleMaximizeConversation(convId)}
+              onClose={() => closeConversation(convId)}
+              onMinimize={() => minimizeConversation(convId)}
+              zIndex={getZIndex(convId)}
+              onFocus={() => focusPane(convId)}
+              isActive={activePane === convId}
+              savedSize={savedSizes[convId]}
+              onSizeChange={(newSize) => handleSizeChange(convId, newSize)}
+              initialPosition={getInitialPosition(convId)}
+              onPositionChange={(newPosition) => handlePositionChange(convId, newPosition)}
+            >
+              <ConversationPane
+                contactName={conv.contactName}
+                lastNotificationTime={unreadMetadata[conv.contactName]}
+                clearNotificationTime={clearNotificationTime}
+                contactPresenceData={sharedContactPresence[conv.contactName]}
+                onOpenGamePane={openGamePane}
+                hasOpenGamePane={Object.values(games || {}).some((game) => (
+                  game
+                  && game.isOpen
+                  && game.contactName === conv.contactName
+                ))}
+                isActive={activePane === convId && !conv.isMinimized}
+              />
+            </Pane>
+          </div>
+        );
+      })}
+      {Object.entries(games || {}).map(([gameId, game]) => {
+        if (!game || !game.isOpen) return null;
+
+        return (
+          <div
+            key={gameId}
+            onMouseDown={() => focusPane(gameId)}
+            style={{ display: game.isMinimized ? 'none' : 'block', zIndex: getZIndex(gameId), position: 'absolute' }}
+          >
+            <Pane
+              title={`Spelletje \u2013 ${getDisplayName(game.contactName)}`}
+              type="game"
+              chromeVariant={chromeVariant}
+              isMaximized={game.isMaximized}
+              onMaximize={() => toggleMaximizeGamePane(gameId)}
+              onClose={() => closeGamePane(gameId)}
+              onMinimize={() => minimizeGamePane(gameId)}
+              zIndex={getZIndex(gameId)}
+              onFocus={() => focusPane(gameId)}
+              isActive={activePane === gameId}
+              savedSize={savedSizes[gameId]}
+              onSizeChange={(newSize) => handleSizeChange(gameId, newSize)}
+              initialPosition={getInitialPosition(gameId)}
+              onPositionChange={(newPosition) => handlePositionChange(gameId, newPosition)}
+            >
+              <GamePane
+                contactName={game.contactName}
+                gameSessionId={game.gameSessionId}
+                gameType={game.gameType}
+                currentUser={currentUser}
+              />
+            </Pane>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+export default PaneLayer;

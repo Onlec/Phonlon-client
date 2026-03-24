@@ -1,0 +1,1126 @@
+/* ================================================
+   2. DESKTOP ICONEN
+   ================================================ */
+
+.shortcuts-area {
+  position: absolute;
+  inset: 0;
+  pointer-events: auto;
+}
+
+.shortcut {
+  width: 80px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
+  padding: 5px;
+  border: 1px solid transparent;
+  position: absolute;
+  user-select: none;
+}
+
+.shortcut:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+}
+
+.shortcut--dragging {
+  opacity: 0.88;
+  border: 1px dashed rgba(255, 255, 255, 0.8);
+  background-color: rgba(30, 90, 180, 0.2);
+}
+
+.shortcut-icon {
+  width: 32px;
+  height: 32px;
+  margin-bottom: 5px;
+  filter: drop-shadow(2px 2px 2px rgba(0,0,0,0.5));
+}
+
+.shortcut-icon-emoji {
+  font-size: 32px;
+}
+
+.shortcut-label {
+  color: white;
+  font-size: var(--ui-font-size);
+  text-align: center;
+  text-shadow: 1px 1px 2px black;
+  user-select: none;
+}
+
+.shortcut-label-input {
+  width: 100%;
+  max-width: 76px;
+  font-size: var(--ui-font-size);
+  text-align: center;
+  border: 1px solid var(--menu-hover);
+  padding: 1px 2px;
+  box-sizing: border-box;
+}
+
+.ctx-menu {
+  position: fixed;
+  z-index: 110000;
+  background: var(--xp-ctx-menu-surface, var(--app-bg));
+  border: 2px solid;
+  border-color: var(--ctx-menu-border-light) var(--ctx-menu-border-dark) var(--ctx-menu-border-dark) var(--ctx-menu-border-light);
+  box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.4);
+  min-width: 150px;
+  padding: 2px;
+  font-family: 'Tahoma', 'MS Sans Serif', sans-serif;
+  font-size: var(--ui-font-size);
+  user-select: none;
+}
+
+.ctx-menu-surface {
+  display: flex;
+  flex-direction: column;
+}
+
+.ctx-menu-item {
+  padding: 4px 20px;
+  cursor: default;
+  white-space: nowrap;
+  color: var(--text-secondary);
+  border: none;
+  background: transparent;
+  text-align: left;
+  font: inherit;
+}
+
+.ctx-menu-item:hover {
+  background: var(--ctx-menu-hover-bg, var(--menu-hover));
+  color: var(--ctx-menu-hover-fg);
+}
+
+.ctx-menu-item:active {
+  background: color-mix(in srgb, var(--ctx-menu-hover-bg, var(--menu-hover)) 82%, black);
+  color: var(--ctx-menu-hover-fg);
+  transform: translate(1px, 1px);
+}
+
+.ctx-menu-item--disabled {
+  color: var(--text-disabled);
+  pointer-events: none;
+}
+
+.ctx-menu-item--bold {
+  font-weight: bold;
+}
+
+.ctx-menu-separator {
+  border: none;
+  border-top: 1px solid var(--xp-ctx-menu-separator-dark, var(--ctx-menu-sep-dark));
+  border-bottom: 1px solid var(--xp-ctx-menu-separator-light, var(--ctx-menu-sep-light));
+  margin: 2px 0;
+}
+
+.desktop:not([data-theme]) .ctx-menu,
+.desktop[data-theme="olijfgroen"] .ctx-menu {
+  background: var(--xp-ctx-menu-surface, #FFFFFF);
+  border: var(--xp-ctx-menu-border-width, 1px) solid var(--xp-ctx-menu-border, var(--ctx-menu-border-dark));
+}
+
+/* ================================================
+   3. HET VENSTER FRAME
+   ================================================ */
+.pane-frame {
+  background: transparent;
+  box-shadow:
+    4px 4px 15px rgba(0,0,0,0.4);
+  border-top-left-radius: 8px;
+  border-top-right-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  position: absolute;
+  box-sizing: border-box;
+  pointer-events: auto;
+  top: 0;
+  left: 0;
+  overflow: hidden;
+}
+
+/* Inactieve vensterrand — border en schaduw dimmen samen met de titelbalk */
+.pane-frame:has(.pane-header--inactive) {
+  box-shadow:
+    3px 3px 10px rgba(0,0,0,0.25);
+}
+
+/* Specifieke minimum groottes per type */
+.pane-frame.type-contacts {
+  min-width: 200px;
+  min-height: 400px;
+}
+
+.pane-frame.type-conversation {
+  min-width: 450px;
+  min-height: 350px;
+}
+
+.pane-frame.type-chat {
+  min-width: 600px; 
+  min-height: 450px;
+}
+
+.pane-frame.type-notepad {
+  min-width: 300px;
+  min-height: 250px;
+}
+
+.pane-frame.type-calculator {
+  min-width: 280px;
+  min-height: 320px;
+}
+
+div.pane-frame.maximized,
+div.pane-frame.pane-frame--maximized {
+  width: 100vw !important;
+  height: calc(100vh - var(--taskbar-height)) !important;
+  top: 0 !important;
+  left: 0 !important;
+  transform: none !important;
+  border-radius: 0;
+  border: none;
+  box-shadow: none;
+  z-index: 9999;
+}
+
+.pane-inner-container {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.desktop:not([data-theme]) .pane-frame:has(.pane-header:not(.pane-header--inactive)) .pane-inner-container {
+  background: var(--xp-frame-base, transparent);
+}
+
+.desktop:not([data-theme]) .pane-frame:has(.pane-header:not(.pane-header--inactive)) .pane-inner-container::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+  border-top-left-radius: inherit;
+  border-top-right-radius: inherit;
+  background:
+    linear-gradient(
+      to right,
+      var(--xp-frame-left, transparent) 0,
+      var(--xp-frame-left, transparent) var(--xp-frame-rail-size, 2px),
+      color-mix(in srgb, var(--xp-frame-left, transparent) 58%, transparent) calc(var(--xp-frame-rail-size, 2px) + 1px),
+      transparent var(--xp-frame-feather-size, 6px)
+    ) left top / var(--xp-frame-feather-size, 6px) 100% no-repeat,
+    linear-gradient(
+      to left,
+      var(--xp-frame-right, transparent) 0,
+      var(--xp-frame-right, transparent) var(--xp-frame-rail-size, 2px),
+      color-mix(in srgb, var(--xp-frame-right, transparent) 58%, transparent) calc(var(--xp-frame-rail-size, 2px) + 1px),
+      transparent var(--xp-frame-feather-size, 6px)
+    ) right top / var(--xp-frame-feather-size, 6px) 100% no-repeat,
+    linear-gradient(
+      to top,
+      var(--xp-frame-bottom, transparent) 0,
+      var(--xp-frame-bottom, transparent) var(--xp-frame-rail-size, 2px),
+      color-mix(in srgb, var(--xp-frame-bottom, transparent) 58%, transparent) calc(var(--xp-frame-rail-size, 2px) + 1px),
+      transparent var(--xp-frame-feather-size, 6px)
+    ) left bottom / 100% var(--xp-frame-feather-size, 6px) no-repeat;
+}
+
+.desktop:not([data-theme]) .pane-frame:has(.pane-header--inactive) .pane-inner-container {
+  background: var(--xp-frame-base-inactive, transparent);
+}
+
+.desktop:not([data-theme]) .pane-frame:has(.pane-header--inactive) .pane-inner-container::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+  border-top-left-radius: inherit;
+  border-top-right-radius: inherit;
+  background:
+    linear-gradient(
+      to right,
+      var(--xp-frame-left-inactive, transparent) 0,
+      var(--xp-frame-left-inactive, transparent) var(--xp-frame-rail-size, 2px),
+      color-mix(in srgb, var(--xp-frame-left-inactive, transparent) 58%, transparent) calc(var(--xp-frame-rail-size, 2px) + 1px),
+      transparent var(--xp-frame-feather-size, 6px)
+    ) left top / var(--xp-frame-feather-size, 6px) 100% no-repeat,
+    linear-gradient(
+      to left,
+      var(--xp-frame-right-inactive, transparent) 0,
+      var(--xp-frame-right-inactive, transparent) var(--xp-frame-rail-size, 2px),
+      color-mix(in srgb, var(--xp-frame-right-inactive, transparent) 58%, transparent) calc(var(--xp-frame-rail-size, 2px) + 1px),
+      transparent var(--xp-frame-feather-size, 6px)
+    ) right top / var(--xp-frame-feather-size, 6px) 100% no-repeat,
+    linear-gradient(
+      to top,
+      var(--xp-frame-bottom-inactive, transparent) 0,
+      var(--xp-frame-bottom-inactive, transparent) var(--xp-frame-rail-size, 2px),
+      color-mix(in srgb, var(--xp-frame-bottom-inactive, transparent) 58%, transparent) calc(var(--xp-frame-rail-size, 2px) + 1px),
+      transparent var(--xp-frame-feather-size, 6px)
+    ) left bottom / 100% var(--xp-frame-feather-size, 6px) no-repeat;
+}
+
+.pane-header {
+  background: var(--xp-titlebar-gradient, linear-gradient(to bottom, var(--win-titlebar-a) 0%, var(--win-titlebar-b) 9%, var(--win-titlebar-c) 18%, var(--win-titlebar-c) 92%, var(--win-titlebar-d) 100%));
+  height: var(--titlebar-height);
+  padding: 0 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  overflow: hidden;
+  color: white;
+  font-weight: bold;
+  font-size: var(--ui-font-size);
+  text-shadow: 1px 1px 1px #000;
+  flex-shrink: 0;
+  user-select: none;
+  position: relative;
+  isolation: isolate;
+  z-index: 1;
+}
+
+.pane-header::before,
+.pane-header::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.pane-header::before {
+  left: 0;
+  width: var(--xp-titlebar-fade-left-width, 42px);
+  background: var(--xp-titlebar-fade-left);
+  opacity: var(--xp-titlebar-fade-left-opacity, 0);
+}
+
+.pane-header::after {
+  right: 0;
+  width: var(--xp-titlebar-fade-right-width, 42px);
+  background: var(--xp-titlebar-fade-right);
+  opacity: var(--xp-titlebar-fade-right-opacity, 0);
+}
+
+.pane-title-section {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  overflow: hidden;
+  position: relative;
+  z-index: 1;
+}
+
+.pane-title {
+  text-shadow: none;
+  font-size: var(--xp-title-font-size, var(--ui-font-size-md));
+  letter-spacing: 0.7px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Inactieve titelbalk — alle thema's behalve klassiek (die heeft eigen override) */
+.pane-header--inactive {
+  background: var(
+    --xp-titlebar-inactive-gradient,
+    linear-gradient(
+      to bottom,
+      var(--win-titlebar-inactive-a) 0%,
+      var(--win-titlebar-inactive-b) 9%,
+      var(--win-titlebar-inactive-a) 18%,
+      var(--win-titlebar-inactive-a) 92%,
+      color-mix(in srgb, var(--win-titlebar-inactive-a) 80%, black) 100%
+    )
+  );
+}
+
+.pane-header--inactive::before {
+  background: var(--xp-titlebar-fade-inactive-left, var(--xp-titlebar-fade-left));
+  opacity: var(--xp-titlebar-fade-inactive-left-opacity, var(--xp-titlebar-fade-left-opacity, 0));
+}
+
+.pane-header--inactive::after {
+  background: var(--xp-titlebar-fade-inactive-right, var(--xp-titlebar-fade-right));
+  opacity: var(--xp-titlebar-fade-inactive-right-opacity, var(--xp-titlebar-fade-right-opacity, 0));
+}
+
+.pane-header--inactive .pane-btn {
+  opacity: 0.65;
+}
+
+.pane-body {
+  flex: 1;
+  min-height: 0;
+  padding: 0 var(--pane-chrome-inset-inline, 2px) var(--pane-chrome-inset-bottom, 2px);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  isolation: isolate;
+  z-index: 1;
+  background: var(--xp-pane-chrome-color, var(--win-bg));
+}
+
+.desktop:not([data-theme]) .pane-frame:has(.pane-header:not(.pane-header--inactive)) .pane-body {
+  background: transparent;
+  z-index: 3;
+}
+
+.desktop:not([data-theme]) .pane-frame:has(.pane-header--inactive) .pane-body {
+  background: transparent;
+  z-index: 3;
+}
+
+.pane-frame:has(.pane-header--inactive) .pane-body {
+  background: var(--xp-pane-chrome-inactive-color, var(--xp-pane-chrome-color, var(--win-bg)));
+}
+
+.pane-controls {
+  display: flex;
+  gap: 3px;
+  position: relative;
+  z-index: 1;
+}
+
+.pane-btn {
+  width: var(--xp-caption-btn-size, calc(var(--titlebar-height) - 4px));
+  height: var(--xp-caption-btn-size, calc(var(--titlebar-height) - 4px));
+  border: 1px solid #fff;
+  border-radius: 3px;
+  color: white;
+  font-weight: bold;
+  font-size: calc(var(--xp-caption-btn-size, 36px) / 2);
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: filter 0.08s linear, box-shadow 0.08s linear, transform 0.08s linear;
+}
+
+.pane-btn:hover {
+  filter: brightness(1.08);
+}
+
+.pane-btn:active {
+  box-shadow: inset 1px 1px 2px rgba(0,0,0,0.4);
+  transform: translate(1px, 1px);
+}
+
+.minimize,
+.pane-btn--minimize { background: var(--xp-caption-btn-min-gradient, var(--win-btn-bg)); }
+.maximize,
+.pane-btn--maximize { background: var(--xp-caption-btn-max-gradient, var(--win-btn-bg)); }
+.close,
+.pane-btn--close { background: var(--xp-caption-btn-close-gradient, var(--pane-btn-close-bg, #e81123)); }
+
+/* Luna caption buttons: shared XP geometry for blue, olive and silver. */
+.desktop:not([data-theme]) .pane-btn--minimize,
+.desktop:not([data-theme]) .pane-btn--maximize,
+.desktop:not([data-theme]) .pane-btn--maximized,
+.desktop:not([data-theme]) .pane-btn--close,
+.desktop[data-theme="olijfgroen"] .pane-btn--minimize,
+.desktop[data-theme="olijfgroen"] .pane-btn--maximize,
+.desktop[data-theme="olijfgroen"] .pane-btn--maximized,
+.desktop[data-theme="olijfgroen"] .pane-btn--close,
+.desktop[data-theme="zilver"] .pane-btn--minimize,
+.desktop[data-theme="zilver"] .pane-btn--maximize,
+.desktop[data-theme="zilver"] .pane-btn--maximized,
+.desktop[data-theme="zilver"] .pane-btn--close {
+  position: relative;
+  width: var(--xp-caption-btn-size, 26px);
+  height: var(--xp-caption-btn-size, 26px);
+  overflow: hidden;
+  color: transparent;
+  font-size: 0;
+  border-color: #FFFFFF;
+  box-shadow: inset 0 -1px 2px 1px color-mix(in srgb, var(--xp-caption-btn-face, var(--win-btn-bg)) 72%, black);
+  background-image: radial-gradient(
+    circle at 90% 90%,
+    color-mix(in srgb, var(--xp-caption-btn-face, var(--win-btn-bg)) 74%, black) 0%,
+    color-mix(in srgb, var(--xp-caption-btn-face, var(--win-btn-bg)) 88%, black) 55%,
+    color-mix(in srgb, var(--xp-caption-btn-face, var(--win-btn-bg)) 68%, white) 70%,
+    color-mix(in srgb, var(--xp-caption-btn-face, var(--win-btn-bg)) 28%, white) 90%,
+    #FFFFFF 100%
+  );
+}
+
+.desktop:not([data-theme]) .pane-btn--minimize::before,
+.desktop[data-theme="olijfgroen"] .pane-btn--minimize::before,
+.desktop[data-theme="zilver"] .pane-btn--minimize::before {
+  content: "";
+  position: absolute;
+  left: 4px;
+  top: 13px;
+  width: 8px;
+  height: 2px;
+  background-color: #FFFFFF;
+  pointer-events: none;
+}
+
+.desktop:not([data-theme]) .pane-btn--maximize::before,
+.desktop[data-theme="olijfgroen"] .pane-btn--maximize::before,
+.desktop[data-theme="zilver"] .pane-btn--maximize::before {
+  content: "";
+  position: absolute;
+  left: 4px;
+  top: 4px;
+  width: 11px;
+  height: 11px;
+  box-shadow: inset 0 3px #FFFFFF, inset 0 0 0 1px #FFFFFF;
+  pointer-events: none;
+}
+
+.desktop:not([data-theme]) .pane-btn--maximized::before,
+.desktop[data-theme="olijfgroen"] .pane-btn--maximized::before,
+.desktop[data-theme="zilver"] .pane-btn--maximized::before {
+  content: "";
+  position: absolute;
+  left: 7px;
+  top: 4px;
+  width: 8px;
+  height: 8px;
+  box-shadow: inset 0 2px #FFFFFF, inset 0 0 0 1px #FFFFFF;
+  pointer-events: none;
+}
+
+.desktop:not([data-theme]) .pane-btn--maximized::after,
+.desktop[data-theme="olijfgroen"] .pane-btn--maximized::after,
+.desktop[data-theme="zilver"] .pane-btn--maximized::after {
+  content: "";
+  position: absolute;
+  left: 4px;
+  top: 7px;
+  width: 8px;
+  height: 8px;
+  background-color: var(--xp-caption-btn-face, #136DFF);
+  box-shadow: inset 0 2px #FFFFFF, inset 0 0 0 1px #FFFFFF, 1px -1px var(--xp-caption-btn-face, #136DFF);
+  pointer-events: none;
+}
+
+.desktop:not([data-theme]) .pane-btn--close,
+.desktop[data-theme="olijfgroen"] .pane-btn--close,
+.desktop[data-theme="zilver"] .pane-btn--close {
+  box-shadow: inset 0 -1px 2px 1px #DA4600;
+  background-image: radial-gradient(
+    circle at 90% 90%,
+    #CC4600 0%,
+    #DC6527 55%,
+    #CD7546 70%,
+    #FFCCB2 90%,
+    #FFFFFF 100%
+  );
+}
+
+.desktop:not([data-theme]) .pane-btn--close::before,
+.desktop:not([data-theme]) .pane-btn--close::after,
+.desktop[data-theme="olijfgroen"] .pane-btn--close::before,
+.desktop[data-theme="olijfgroen"] .pane-btn--close::after,
+.desktop[data-theme="zilver"] .pane-btn--close::before,
+.desktop[data-theme="zilver"] .pane-btn--close::after {
+  content: "";
+  position: absolute;
+  left: 9px;
+  top: 3px;
+  width: 2px;
+  height: 15px;
+  background-color: #FFFFFF;
+  pointer-events: none;
+}
+
+.desktop:not([data-theme]) .pane-btn--close::before,
+.desktop[data-theme="olijfgroen"] .pane-btn--close::before,
+.desktop[data-theme="zilver"] .pane-btn--close::before {
+  transform: rotate(45deg);
+}
+
+.desktop:not([data-theme]) .pane-btn--close::after,
+.desktop[data-theme="olijfgroen"] .pane-btn--close::after,
+.desktop[data-theme="zilver"] .pane-btn--close::after {
+  transform: rotate(-45deg);
+  pointer-events: none;
+}
+
+.pane-btn--close:hover {
+  filter: brightness(1.12);
+}
+
+.pane-content {
+  flex: 1;
+  min-height: 0;
+  background-color: white;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden !important;
+  position: relative;
+  z-index: 1;
+}
+
+div.pane-frame.maximized .pane-body,
+div.pane-frame.pane-frame--maximized .pane-body {
+  padding: 0;
+}
+
+/* ================================================
+   4. DE HANDMATIGE RESIZERS
+   ================================================ */
+
+.resizer-e { 
+  position: absolute; 
+  top: 0; 
+  right: -5px; 
+  width: 10px; 
+  height: 100%; 
+  cursor: e-resize; 
+  z-index: 10005; 
+}
+
+.resizer-s { 
+  position: absolute; 
+  bottom: -5px; 
+  left: 0; 
+  width: 100%; 
+  height: 10px; 
+  cursor: s-resize; 
+  z-index: 10005; 
+}
+
+.resizer-se {
+  position: absolute; 
+  width: 15px; 
+  height: 15px; 
+  right: 0; 
+  bottom: 0; 
+  cursor: se-resize; 
+  z-index: 10006;
+  background: linear-gradient(135deg, transparent 50%, var(--text-disabled) 50%, var(--text-disabled) 60%, transparent 60%, transparent 70%, var(--text-disabled) 70%, var(--text-disabled) 80%, transparent 80%);
+}
+
+/* ================================================
+
+   6. TAAKBALK
+   ================================================ */
+
+.taskbar {
+  position: fixed;
+  bottom: 0;
+  width: 100%;
+  height: var(--taskbar-height);
+  background: var(--xp-taskbar-gradient, linear-gradient(to bottom, var(--taskbar-a) 0%, var(--taskbar-b) 9%, var(--taskbar-c) 18%, var(--taskbar-c) 92%, var(--taskbar-d) 100%));
+  display: flex; 
+  align-items: center; 
+  z-index: 10000;
+  cursor: default;
+  caret-color: transparent;
+}
+
+.start-btn {
+  height: 100%;
+  width: var(--xp-start-btn-width, 90px);
+  flex-shrink: 0;
+  position: relative;
+  overflow: hidden;
+  background: var(
+    --xp-start-btn-gradient,
+    linear-gradient(
+      to bottom,
+      var(--startbtn-b) 0%,
+      var(--startbtn-a) 100%
+    )
+  );
+  color: white;
+  font-weight: bold;
+  font-style: italic;
+  font-size: var(--xp-start-btn-font-size, var(--ui-font-size-lg));
+  letter-spacing: 0.5px;
+  text-transform: lowercase;
+  padding: 0 15px;
+  border: 1px solid var(--xp-start-btn-border, var(--startbtn-border));
+  border-left: none;
+  border-top-right-radius: 6px 50%;
+  border-bottom-right-radius: 6px 50%;
+  cursor: pointer;
+  box-shadow:
+    inset 1px 0 0 rgba(255,255,255,0.40),
+    inset 0 1px 0 rgba(255,255,255,0.55),
+    1px 1px 4px rgba(0,0,0,0.50);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-shadow: 1px 2px 2px rgba(0,0,0,0.5);
+}
+
+.start-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 46%;
+  background: linear-gradient(
+    to bottom,
+    rgba(255,255,255,0.55) 0%,
+    rgba(255,255,255,0.20) 65%,
+    rgba(255,255,255,0.00) 100%
+  );
+  pointer-events: none;
+}
+
+.desktop:not([data-theme]) .start-btn::before,
+.desktop[data-theme="olijfgroen"] .start-btn::before,
+.desktop[data-theme="zilver"] .start-btn::before {
+  display: none;
+}
+
+.start-btn:hover {
+  background: var(
+    --xp-start-btn-hover-gradient,
+    linear-gradient(
+      to bottom,
+      var(--startbtn-hover-b) 0%,
+      var(--startbtn-hover-a) 100%
+    )
+  );
+  box-shadow:
+    inset 1px 0 0 rgba(255,255,255,0.40),
+    inset 0 1px 0 rgba(255,255,255,0.55),
+    1px 1px 4px rgba(0,0,0,0.50);
+}
+
+.start-btn.start-btn--pressed {
+  background: var(--xp-start-btn-pressed-gradient, var(--xp-start-btn-gradient));
+  box-shadow: inset 2px 2px 3px rgba(0,0,0,0.3);
+  border-color: var(--xp-start-btn-border, var(--startbtn-border));
+}
+
+.start-icon {
+  margin-right: 4px;
+}
+
+/* Taskbar Items Container */
+.taskbar-items {
+  flex-grow: 1;
+  align-self: stretch;
+  display: flex;
+  align-items: stretch;
+  padding-left: 10px;
+  gap: 5px;
+  overflow: hidden;
+}
+
+/* Individual Taskbar Tab */
+.taskbar-tab {
+  background: var(--xp-taskbar-tab-inactive-gradient, linear-gradient(to bottom, var(--tab-a) 0%, var(--tab-b) 100%));
+  color: white;
+  margin-block: 4px;
+  padding: 0 10px;
+  border-radius: 3px;
+  font-size: var(--ui-font-size);
+  
+  /* XP Dynamic Width */
+  flex: 1 1 auto;
+  min-width: 50px;
+  max-width: 160px;
+  
+  display: flex; 
+  align-items: center;
+  gap: 5px; 
+  cursor: pointer; 
+  border: none;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.22),
+    1px 1px 0 rgba(6,48,130,0.48);
+}
+
+.taskbar-tab:hover {
+  background: var(--xp-taskbar-tab-inactive-hover-gradient, linear-gradient(to bottom, var(--tab-hover-a) 0%, var(--tab-hover-b) 100%));
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.28),
+    1px 1px 0 rgba(8,52,140,0.58);
+}
+
+.taskbar-tab:active {
+  background: var(--xp-taskbar-tab-active-gradient, linear-gradient(to bottom, var(--tab-active-a) 0%, var(--tab-active-b) 100%));
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.12),
+    inset 1px 1px 3px rgba(0,0,0,0.38),
+    inset -1px -1px 2px rgba(255,255,255,0.08);
+  transform: none;
+}
+
+.taskbar-tab.taskbar-tab--active {
+  background: var(--xp-taskbar-tab-active-gradient, linear-gradient(to bottom, var(--tab-active-a) 0%, var(--tab-active-b) 100%));
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.12),
+    inset 1px 1px 3px rgba(0,0,0,0.38),
+    inset -1px -1px 2px rgba(255,255,255,0.08);
+}
+
+.taskbar-tab.taskbar-tab--active:hover {
+  background: var(--xp-taskbar-tab-active-hover-gradient, var(--xp-taskbar-tab-active-gradient, linear-gradient(to bottom, var(--tab-active-a) 0%, var(--tab-active-b) 100%)));
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.16),
+    inset 1px 1px 3px rgba(0,0,0,0.34),
+    inset -1px -1px 2px rgba(255,255,255,0.10);
+}
+
+/* Taskbar Icon */
+.taskbar-icon {
+  flex-shrink: 0;
+  font-size: 14px;
+}
+
+/* Taskbar Text with Ellipsis */
+.taskbar-tab > span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+}
+
+.desktop:not([data-theme="klassiek"]) .taskbar-tab:active > .taskbar-icon,
+.desktop:not([data-theme="klassiek"]) .taskbar-tab:active > span:last-child,
+.desktop:not([data-theme="klassiek"]) .taskbar-tab.taskbar-tab--active > .taskbar-icon,
+.desktop:not([data-theme="klassiek"]) .taskbar-tab.taskbar-tab--active > span:last-child {
+  transform: translate(1px, 1px);
+}
+
+/* System Tray */
+.systray {
+  color: var(--systray-text);
+  font-size: var(--ui-font-size);
+  padding: 0 10px;
+  margin-left: auto;
+  text-shadow: 1px 1px 1px rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  position: relative;
+  align-self: stretch;
+  background: var(--xp-systray-gradient, var(--systray-bg));
+  border-left: 1px solid var(--xp-systray-divider, var(--systray-border-left));
+  box-shadow: inset 1px 0 0 var(--xp-systray-divider-highlight, color-mix(in srgb, var(--systray-border-left) 30%, white));
+}
+
+.systray-chatlon-icon {
+  position: relative;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 3px;
+  border-radius: 2px;
+}
+
+.systray-chatlon-icon:hover {
+  background: var(--systray-icon-hover-bg, rgba(255,255,255,0.15));
+}
+
+.systray-chatlon-figure {
+  font-size: 14px;
+}
+
+.systray-status-dot {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  border: 1px solid rgba(0,0,0,0.4);
+}
+
+.systray-menu {
+  position: absolute;
+  bottom: 100%;
+  right: 0;
+  background: var(--xp-systray-menu-surface, var(--app-bg));
+  border: 1px solid var(--xp-systray-menu-border, var(--systray-border-left));
+  box-shadow: 2px 2px 6px rgba(0,0,0,0.3);
+  z-index: 100000;
+  min-width: 220px;
+  padding: 2px 0;
+  margin-bottom: 2px;
+  color: var(--text-secondary);
+  text-shadow: none;
+}
+
+.systray-menu .dropdown-item {
+  padding: 4px 20px;
+}
+
+.systray-menu .dropdown-item:hover {
+  background: var(--ctx-menu-hover-bg);
+  color: var(--ctx-menu-hover-fg);
+}
+
+.systray-menu .dropdown-item:active {
+  background: color-mix(in srgb, var(--ctx-menu-hover-bg) 82%, black);
+  color: var(--ctx-menu-hover-fg);
+  transform: translate(1px, 1px);
+}
+
+.systray-menu .dropdown-separator {
+  height: 0;
+  border-top: 1px solid var(--xp-systray-menu-separator-dark, var(--text-disabled));
+  border-bottom: 1px solid var(--xp-systray-menu-separator-light, #FFFFFF);
+  margin: 2px 0;
+  background: transparent;
+}
+
+.systray-menu-header {
+  background: var(--xp-systray-menu-header-gradient, transparent);
+  color: var(--xp-systray-menu-header-text, inherit);
+  border-bottom: 1px solid var(--xp-systray-menu-border, var(--systray-border-left));
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+}
+
+.systray-menu-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 2px;
+  border: 1px solid var(--text-disabled);
+}
+
+.systray-menu-user {
+  display: flex;
+  flex-direction: column;
+}
+
+.systray-menu-name {
+  font-size: 11px;
+  font-weight: bold;
+  color: inherit;
+  text-shadow: none;
+}
+
+.systray-menu-status {
+  font-size: 10px;
+  text-shadow: none;
+}
+
+.systray-status-indicator {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 6px;
+  border: 1px solid rgba(0,0,0,0.2);
+}
+
+/* ================================================
+
+   11. START MENU STIJL
+   ================================================ */
+
+.start-menu {
+  position: absolute;
+  bottom: var(--taskbar-height);
+  left: 0;
+  width: var(--xp-start-menu-width, 380px);
+  height: var(--xp-start-menu-height, auto);
+  background: var(--xp-start-menu-left-col, white);
+  border: 2px solid var(--xp-start-menu-border, var(--startmenu-border));
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  z-index: 10001;
+  box-shadow: 3px 4px 8px rgba(0,0,0,0.38);
+  overflow: hidden;
+}
+
+.start-menu-header {
+  background: var(--xp-start-menu-header-gradient, linear-gradient(to bottom, var(--startmenu-header-a) 0%, var(--startmenu-header-b) 100%));
+  color: white;
+  padding: 8px 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  position: relative;
+  isolation: isolate;
+}
+
+.start-menu-header::before,
+.start-menu-header::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  pointer-events: none;
+}
+
+.start-menu-header::before {
+  bottom: var(--xp-start-menu-accent-height, 0px);
+  height: 1px;
+  background: var(--xp-start-menu-header-border, transparent);
+}
+
+.start-menu-header::after {
+  bottom: 0;
+  height: var(--xp-start-menu-accent-height, 0px);
+  background: var(--xp-start-menu-accent-bar, none);
+}
+
+.start-user-img {
+  width: 42px;
+  height: 42px;
+  border: 2px solid rgba(255,255,255,0.9);
+  border-radius: 2px;
+  background: white;
+}
+
+.start-user-name {
+  font-weight: bold;
+  font-size: var(--ui-font-size-md);
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+}
+
+.start-menu-main {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  background-color: var(--xp-start-menu-left-col, white);
+}
+
+.start-left-col {
+  width: 50%;
+  padding: 5px;
+  border-right: 1px solid var(--xp-start-menu-divider, var(--startmenu-divider));
+  background-color: var(--xp-start-menu-left-col, white);
+  display: flex;
+  flex-direction: column;
+}
+
+.start-right-col {
+  width: 50%;
+  background-color: var(--xp-start-menu-right-col, var(--startmenu-rightcol));
+  padding: 5px;
+  display: flex;
+  flex-direction: column;
+}
+
+.start-left-group,
+.start-right-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.start-left-divider,
+.start-right-divider {
+  margin: 6px 10px;
+  flex: 0 0 auto;
+}
+
+.start-left-divider {
+  border-top: 1px solid var(--xp-start-menu-left-divider, var(--startmenu-divider));
+}
+
+.start-right-divider {
+  border-top: 1px solid var(--xp-start-menu-right-divider-top, var(--startmenu-divider));
+  border-bottom: 1px solid var(--xp-start-menu-right-divider-bottom, var(--startmenu-divider));
+}
+
+.start-item, .start-item-gray {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  font-size: var(--ui-font-size);
+  cursor: pointer;
+  color: var(--text-secondary);
+  border-radius: 2px;
+}
+
+.start-item img { 
+  width: 24px; 
+  height: 24px; 
+}
+
+.start-item-icon-image {
+  width: 24px;
+  height: 24px;
+}
+
+.start-item-icon-emoji {
+  font-size: 24px;
+}
+
+.start-item:hover {
+  background-color: var(--xp-start-menu-item-hover, var(--startmenu-item-hover));
+  color: white;
+}
+
+.start-item:active {
+  background-color: color-mix(in srgb, var(--xp-start-menu-item-hover, var(--startmenu-item-hover)) 85%, black);
+  color: white;
+  transform: translate(1px, 1px);
+}
+
+.start-item-gray {
+  font-weight: bold;
+  color: var(--startmenu-pinned);
+}
+
+.start-item-gray--secondary {
+  font-weight: normal;
+}
+
+.start-item-gray:hover {
+  background-color: var(--xp-start-menu-item-hover, var(--startmenu-item-hover));
+  color: white;
+}
+
+.start-item-gray:active {
+  background-color: color-mix(in srgb, var(--xp-start-menu-item-hover, var(--startmenu-item-hover)) 85%, black);
+  color: white;
+  transform: translate(1px, 1px);
+}
+
+.start-menu-footer {
+  background: var(--xp-start-menu-footer-gradient, linear-gradient(to bottom, var(--startmenu-header-a) 0%, var(--startmenu-header-b) 100%));
+  padding: 5px 10px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  border-top: 1px solid var(--xp-start-menu-footer-border, var(--startmenu-footer-bdr));
+}
+
+.logoff-btn, .shutdown-btn {
+  background: none;
+  border: none;
+  color: white;
+  font-size: var(--ui-font-size);
+  cursor: pointer;
+  font-weight: normal;
+  text-shadow: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+}
+
+.logoff-btn:hover, .shutdown-btn:hover { 
+  text-decoration: underline; 
+}
+
+.start-footer-icon {
+  width: 21px;
+  height: 21px;
+  flex: 0 0 auto;
+}
